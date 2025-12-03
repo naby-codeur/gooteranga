@@ -1,0 +1,423 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Enum pour les rôles utilisateurs
+enum UserRole {
+  USER
+  PRESTATAIRE
+  ADMIN
+}
+
+// Enum pour les types d'offres
+enum OffreType {
+  HEBERGEMENT
+  GUIDE
+  ACTIVITE
+  RESTAURANT
+  CULTURE
+  EVENEMENT
+}
+
+// Enum pour les catégories d'activités
+enum ActiviteCategorie {
+  CULTURE
+  NATURE
+  AVENTURE
+  RELIGIEUX
+  GASTRONOMIE
+  PLAGE
+  SPORT
+  FESTIVAL
+  SHOPPING
+  BIEN_ETRE
+}
+
+// Enum pour les types de public
+enum TypePublic {
+  FAMILLE
+  SOLO
+  COUPLE
+  GROUPE
+  AFFAIRES
+  SENIORS
+  JEUNES
+}
+
+// Enum pour les statuts de réservation
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+// Enum pour les statuts de paiement
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+// Enum pour les plans d'abonnement
+enum PlanType {
+  GRATUIT
+  PRO
+  PREMIUM
+}
+
+// Enum pour les statuts d'abonnement
+enum AbonnementStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  PENDING
+}
+
+// Enum pour les types de boost
+enum BoostType {
+  EXPERIENCE // Boost d'une expérience
+  REGIONAL // Boost régional
+  CATEGORIE // Boost par catégorie
+  MENSUEL // Boost mensuel complet
+}
+
+// Enum pour les types de prestataires
+enum PrestataireType {
+  HOTEL
+  GUIDE
+  AGENCE
+  RESTAURANT
+  ARTISAN
+  ASSOCIATION
+  AUBERGE
+  TRANSPORT
+  AUTRE
+}
+
+// Modèle User
+model User {
+  id            String    @id @default(cuid())
+  email         String // Permet plusieurs comptes avec la même email (prestataire et touriste)
+  nom           String
+  prenom        String?
+  telephone     String?
+  role          UserRole  @default(USER)
+  langue        String    @default("fr") // fr, en, ar
+  avatar        String?
+  emailVerified DateTime?
+  isActive      Boolean   @default(true) // Permet de suspendre un utilisateur (touriste ou prestataire)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  reservations  Reservation[]
+  favoris       Favori[]
+  messages      Message[]
+  avis          Avis[]
+  prestataire   Prestataire?
+  notifications Notification[]
+
+  @@unique([email, role]) // Un email peut avoir un compte USER et un compte PRESTATAIRE
+  @@index([email])
+  @@index([role])
+  @@index([isActive])
+}
+
+// Modèle Prestataire
+model Prestataire {
+  id            String          @id @default(cuid())
+  userId        String          @unique
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type          PrestataireType
+  nomEntreprise String
+  description   String?
+  adresse       String?
+  ville         String?
+  region        String?
+  telephone     String?
+  email         String?
+  siteWeb       String?
+  logo          String?
+  isVerified    Boolean         @default(false)
+  planType      PlanType        @default(GRATUIT)
+  planExpiresAt DateTime? // Date d'expiration du plan actuel
+  solde         Decimal         @default(0) @db.Decimal(10, 2)
+  rating        Float           @default(0)
+  nombreAvis    Int             @default(0)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relations
+  offres        Offre[]
+  reservations  Reservation[]
+  paiements     Paiement[]
+  messages      Message[]
+  retraits      Retrait[]
+  notifications Notification[]
+  abonnements   Abonnement[]
+  boosts        Boost[]
+
+  @@index([type])
+  @@index([isVerified])
+  @@index([planType])
+}
+
+// Modèle Offre
+model Offre {
+  id                String              @id @default(cuid())
+  prestataireId     String
+  prestataire       Prestataire         @relation(fields: [prestataireId], references: [id], onDelete: Cascade)
+  titre             String
+  description       String              @db.Text
+  type              OffreType
+  region            String?
+  ville             String?
+  adresse           String?
+  latitude          Float?
+  longitude         Float?
+  prix              Decimal             @db.Decimal(10, 2)
+  prixMin           Decimal?            @db.Decimal(10, 2) // Prix minimum (pour les gammes de budget)
+  prixMax           Decimal?            @db.Decimal(10, 2) // Prix maximum (pour les gammes de budget)
+  prixUnite         String? // "par nuit", "par personne", "par groupe"
+  images            String[] // URLs des images
+  videos            String[] // URLs des vidéos
+  duree             Int? // Durée en heures
+  dureeMin          Int? // Durée minimale en heures
+  dureeMax          Int? // Durée maximale en heures
+  capacite          Int? // Capacité maximale
+  disponibilite     Json? // Calendrier de disponibilité
+  activites         ActiviteCategorie[] // Catégories d'activités
+  typesPublic       TypePublic[] // Types de public ciblés
+  activitesProches  Json? // Activités/offres proches (localisation)
+  rating            Float               @default(0)
+  nombreAvis        Int                 @default(0)
+  vues              Int                 @default(0)
+  isActive          Boolean             @default(true)
+  isFeatured        Boolean             @default(false)
+  featuredExpiresAt DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  // Relations
+  reservations Reservation[]
+  avis         Avis[]
+  favoris      Favori[]
+  boosts       Boost[]
+
+  @@index([prestataireId])
+  @@index([type])
+  @@index([region])
+  @@index([isActive])
+  @@index([isFeatured])
+}
+
+// Modèle Réservation
+model Reservation {
+  id              String            @id @default(cuid())
+  userId          String
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  offreId         String
+  offre           Offre             @relation(fields: [offreId], references: [id], onDelete: Cascade)
+  prestataireId   String
+  prestataire     Prestataire       @relation(fields: [prestataireId], references: [id], onDelete: Cascade)
+  dateDebut       DateTime
+  dateFin         DateTime?
+  nombrePersonnes Int               @default(1)
+  montant         Decimal           @db.Decimal(10, 2) // Montant total payé par le client (100% pour le prestataire)
+  statut          ReservationStatus @default(PENDING)
+  notes           String?           @db.Text
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  paiement Paiement?
+
+  @@index([userId])
+  @@index([offreId])
+  @@index([prestataireId])
+  @@index([statut])
+  @@index([dateDebut])
+}
+
+// Modèle Paiement
+model Paiement {
+  id              String        @id @default(cuid())
+  reservationId   String        @unique
+  reservation     Reservation   @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  prestataireId   String
+  prestataire     Prestataire   @relation(fields: [prestataireId], references: [id], onDelete: Cascade)
+  montant         Decimal       @db.Decimal(10, 2) // Montant total (100% pour le prestataire, pas de commission)
+  methode         String // "stripe", "cinetpay", "om", "wave", "free_money"
+  transactionId   String?       @unique
+  statut          PaymentStatus @default(PENDING)
+  stripePaymentId String?
+  cinetpayId      String?
+  metadata        Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([prestataireId])
+  @@index([statut])
+  @@index([transactionId])
+}
+
+// Modèle Avis
+model Avis {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  offreId       String
+  offre         Offre    @relation(fields: [offreId], references: [id], onDelete: Cascade)
+  reservationId String?  @unique
+  rating        Int // 1-5
+  commentaire   String?  @db.Text
+  isVerified    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([offreId])
+  @@index([userId])
+}
+
+// Modèle Favori
+model Favori {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  offreId   String
+  offre     Offre    @relation(fields: [offreId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, offreId])
+  @@index([userId])
+}
+
+// Modèle Message
+model Message {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prestataireId String
+  prestataire   Prestataire @relation(fields: [prestataireId], references: [id], onDelete: Cascade)
+  reservationId String?
+  contenu       String      @db.Text
+  isFromUser    Boolean     @default(true)
+  isRead        Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+
+  @@index([userId, prestataireId])
+  @@index([reservationId])
+}
+
+// Modèle pour les statistiques (optionnel, peut être calculé à la volée)
+model Statistique {
+  id            String   @id @default(cuid())
+  prestataireId String?
+  offreId       String?
+  type          String // "vue", "reservation", "revenue"
+  valeur        Decimal  @db.Decimal(10, 2)
+  date          DateTime @default(now())
+  metadata      Json?
+
+  @@index([prestataireId])
+  @@index([offreId])
+  @@index([date])
+}
+
+// Modèle pour les retraits de fonds par les prestataires
+model Retrait {
+  id            String      @id @default(cuid())
+  prestataireId String
+  prestataire   Prestataire @relation(fields: [prestataireId], references: [id], onDelete: Cascade)
+  montant       Decimal     @db.Decimal(10, 2)
+  methode       String // "om", "wave", "free_money", "carte"
+  numeroCompte  String? // Numéro de compte mobile money ou carte
+  statut        String      @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  transactionId String?     @unique
+  metadata      Json?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([prestataireId])
+  @@index([statut])
+}
+
+// Modèle pour les notifications
+model Notification {
+  id            String       @id @default(cuid())
+  userId        String? // null pour notifications globales
+  user          User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prestataireId String?
+  prestataire   Prestataire? @relation(fields: [prestataireId], references: [id], onDelete: Cascade)
+  type          String // "reservation", "payment", "message", "review", "system"
+  titre         String
+  message       String       @db.Text
+  lien          String?
+  isRead        Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+
+  @@index([userId])
+  @@index([prestataireId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+// Modèle Abonnement
+model Abonnement {
+  id                   String           @id @default(cuid())
+  prestataireId        String
+  prestataire          Prestataire      @relation(fields: [prestataireId], references: [id], onDelete: Cascade)
+  planType             PlanType
+  montant              Decimal          @db.Decimal(10, 2)
+  dateDebut            DateTime         @default(now())
+  dateFin              DateTime // Date d'expiration
+  statut               AbonnementStatus @default(ACTIVE)
+  stripeSubscriptionId String?          @unique // ID de l'abonnement Stripe
+  methode              String // "stripe", "cinetpay", "om", "wave", "free_money"
+  transactionId        String?          @unique
+  autoRenouvellement   Boolean          @default(true)
+  metadata             Json?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  @@index([prestataireId])
+  @@index([statut])
+  @@index([dateFin])
+  @@index([stripeSubscriptionId])
+}
+
+// Modèle Boost
+model Boost {
+  id            String      @id @default(cuid())
+  prestataireId String
+  prestataire   Prestataire @relation(fields: [prestataireId], references: [id], onDelete: Cascade)
+  offreId       String? // null si boost régional ou catégorie
+  offre         Offre?      @relation(fields: [offreId], references: [id], onDelete: Cascade)
+  type          BoostType
+  region        String? // Pour boost régional
+  categorie     String? // Pour boost catégorie
+  montant       Decimal     @db.Decimal(10, 2)
+  dateDebut     DateTime    @default(now())
+  dateFin       DateTime
+  isActive      Boolean     @default(true)
+  methode       String // "stripe", "cinetpay", "om", "wave", "free_money"
+  transactionId String?     @unique
+  metadata      Json?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([prestataireId])
+  @@index([offreId])
+  @@index([type])
+  @@index([isActive])
+  @@index([dateFin])
+}

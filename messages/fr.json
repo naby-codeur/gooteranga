@@ -1,0 +1,48 @@
+{
+  "common": {
+    "welcome": "Bienvenue",
+    "explore": "Explorer",
+    "book": "Réserver",
+    "login": "Connexion",
+    "signup": "Inscription",
+    "logout": "Déconnexion",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "price": "Prix",
+    "rating": "Note",
+    "reviews": "Avis",
+    "view": "Voir",
+    "bookNow": "Réserver maintenant",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "submit": "Soumettre"
+  },
+  "home": {
+    "title": "Explorez le Sénégal",
+    "subtitle": "Découvrez les meilleures expériences touristiques",
+    "cta": "Commencer l'exploration",
+    "popularDestinations": "Destinations populaires",
+    "categories": "Catégories",
+    "featured": "En vedette"
+  },
+  "explorer": {
+    "title": "Explorer",
+    "filters": "Filtres",
+    "results": "Résultats",
+    "noResults": "Aucun résultat trouvé"
+  },
+  "auth": {
+    "loginTitle": "Connexion",
+    "signupTitle": "Inscription",
+    "email": "Email",
+    "password": "Mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "forgotPassword": "Mot de passe oublié?",
+    "alreadyHaveAccount": "Déjà un compte?",
+    "noAccount": "Pas encore de compte?"
+  }
+}
+
+

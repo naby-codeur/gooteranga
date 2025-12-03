@@ -1,0 +1,48 @@
+{
+  "common": {
+    "welcome": "مرحبا",
+    "explore": "استكشف",
+    "book": "احجز",
+    "login": "تسجيل الدخول",
+    "signup": "إنشاء حساب",
+    "logout": "تسجيل الخروج",
+    "search": "بحث",
+    "filter": "تصفية",
+    "price": "السعر",
+    "rating": "التقييم",
+    "reviews": "المراجعات",
+    "view": "عرض",
+    "bookNow": "احجز الآن",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "submit": "إرسال"
+  },
+  "home": {
+    "title": "استكشف السنغال",
+    "subtitle": "اكتشف أفضل التجارب السياحية",
+    "cta": "ابدأ الاستكشاف",
+    "popularDestinations": "الوجهات الشعبية",
+    "categories": "الفئات",
+    "featured": "مميز"
+  },
+  "explorer": {
+    "title": "استكشف",
+    "filters": "المرشحات",
+    "results": "النتائج",
+    "noResults": "لم يتم العثور على نتائج"
+  },
+  "auth": {
+    "loginTitle": "تسجيل الدخول",
+    "signupTitle": "إنشاء حساب",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "confirmPassword": "تأكيد كلمة المرور",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "alreadyHaveAccount": "لديك حساب بالفعل؟",
+    "noAccount": "ليس لديك حساب بعد؟"
+  }
+}
+
+

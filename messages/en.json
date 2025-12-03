@@ -1,0 +1,48 @@
+{
+  "common": {
+    "welcome": "Welcome",
+    "explore": "Explore",
+    "book": "Book",
+    "login": "Login",
+    "signup": "Sign up",
+    "logout": "Logout",
+    "search": "Search",
+    "filter": "Filter",
+    "price": "Price",
+    "rating": "Rating",
+    "reviews": "Reviews",
+    "view": "View",
+    "bookNow": "Book now",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "submit": "Submit"
+  },
+  "home": {
+    "title": "Explore Senegal",
+    "subtitle": "Discover the best tourist experiences",
+    "cta": "Start exploring",
+    "popularDestinations": "Popular destinations",
+    "categories": "Categories",
+    "featured": "Featured"
+  },
+  "explorer": {
+    "title": "Explore",
+    "filters": "Filters",
+    "results": "Results",
+    "noResults": "No results found"
+  },
+  "auth": {
+    "loginTitle": "Login",
+    "signupTitle": "Sign up",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm password",
+    "forgotPassword": "Forgot password?",
+    "alreadyHaveAccount": "Already have an account?",
+    "noAccount": "Don't have an account yet?"
+  }
+}
+
+
