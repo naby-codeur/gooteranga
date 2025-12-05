@@ -1,0 +1,47 @@
+{
+  "common": {
+    "welcome": "Willkommen",
+    "explore": "Erkunden",
+    "book": "Buchen",
+    "login": "Anmelden",
+    "signup": "Registrieren",
+    "logout": "Abmelden",
+    "search": "Suchen",
+    "filter": "Filtern",
+    "price": "Preis",
+    "rating": "Bewertung",
+    "reviews": "Bewertungen",
+    "view": "Ansehen",
+    "bookNow": "Jetzt buchen",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "submit": "Absenden"
+  },
+  "home": {
+    "title": "Senegal erkunden",
+    "subtitle": "Entdecken Sie die besten touristischen Erfahrungen",
+    "cta": "Erkundung beginnen",
+    "popularDestinations": "Beliebte Reiseziele",
+    "categories": "Kategorien",
+    "featured": "Empfohlen"
+  },
+  "explorer": {
+    "title": "Erkunden",
+    "filters": "Filter",
+    "results": "Ergebnisse",
+    "noResults": "Keine Ergebnisse gefunden"
+  },
+  "auth": {
+    "loginTitle": "Anmelden",
+    "signupTitle": "Registrieren",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "confirmPassword": "Passwort bestätigen",
+    "forgotPassword": "Passwort vergessen?",
+    "alreadyHaveAccount": "Haben Sie bereits ein Konto?",
+    "noAccount": "Haben Sie noch kein Konto?"
+  }
+}
+

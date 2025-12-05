@@ -7,13 +7,22 @@ Plateforme web de mise en relation touristique pour digitaliser l'expérience to
 - **Frontend**: Next.js 16 (App Router), TypeScript, Tailwind CSS v4
 - **UI Components**: shadcn/ui, Framer Motion
 - **Backend**: Next.js API Routes (intégré)
-- **Database**: Supabase (PostgreSQL)
+- **Database**: PostgreSQL (via Prisma) - optionnel en mode dev
 - **ORM**: Prisma
-- **Authentication**: Supabase Auth
-- **Payments**: Stripe + CinetPay
+- **Authentication**: Mode développement (authentification désactivée)
+- **Payments**: Stripe + CinetPay (non configuré)
 - **Maps**: Leaflet.js
 - **Charts**: Chart.js avec react-chartjs-2
 - **i18n**: Next-Intl (FR/EN/AR)
+
+## ⚠️ Mode Développement
+
+**Le projet fonctionne actuellement en mode développement** :
+- ✅ Authentification désactivée - Accès direct aux dashboards
+- ✅ Données fictives - Pas besoin de base de données pour commencer
+- ✅ Développement rapide sans dépendances externes
+
+Consultez [docs/DEVELOPMENT_MODE.md](docs/DEVELOPMENT_MODE.md) pour plus d'informations.
 
 ## 📦 Installation
 
@@ -28,167 +37,111 @@ cd gooteranga
 npm install
 ```
 
-3. **Configurer les variables d'environnement**
+3. **Configurer les variables d'environnement (optionnel en mode dev)**
 ```bash
-cp .env.example .env
-```
-Remplir les variables dans `.env` avec vos clés Supabase, Stripe, etc.
-
-4. **Configurer la base de données**
-```bash
-# Configurer DATABASE_URL dans .env avec votre URL Supabase
-npx prisma generate
-npx prisma db push
-npx prisma migrate dev 
-npx prisma migrate dev --name update
-
+cp .env.example .env.local
 ```
 
-5. **Lancer le serveur de développement**
+Pour le développement, seule l'URL de l'application est nécessaire :
+```env
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+Pour utiliser Prisma (optionnel) :
+```env
+DATABASE_URL=postgresql://user:password@localhost:5432/gooteranga
+DIRECT_URL=postgresql://user:password@localhost:5432/gooteranga
+```
+
+4. **Lancer le serveur de développement**
 ```bash
 npm run dev
 ```
 
-Ouvrir [http://localhost:3000](http://localhost:3000) dans votre navigateur.
+5. **Accéder aux dashboards**
 
-## 📁 Structure du projet
+En mode développement, vous pouvez accéder directement à :
+- Dashboard Client : http://localhost:3000/fr/dashboard
+- Dashboard Prestataire : http://localhost:3000/fr/dashboard/prestataire
+- Dashboard Admin : http://localhost:3000/fr/dashboard/admin
+
+## 🎯 Structure du Projet
 
 ```
 gooteranga/
-├── app/
-│   ├── [locale]/          # Pages avec internationalisation
-│   │   ├── page.tsx       # Page d'accueil
-│   │   ├── explorer/      # Page d'exploration
-│   │   ├── experience/    # Pages de détails d'expérience
-│   │   ├── login/         # Connexion
-│   │   ├── signup/        # Inscription
-│   │   ├── dashboard/     # Dashboard utilisateur
-│   │   ├── dashboard/prestataire/  # Dashboard prestataire
-│   │   ├── dashboard/admin/  # Dashboard admin
-│   │   ├── auth/callback/  # Callback OAuth
-│   │   └── ...
-│   ├── api/               # API Routes Next.js
-│   │   ├── auth/          # Routes d'authentification
-│   │   ├── offres/        # Routes pour les offres
-│   │   ├── reservations/  # Routes pour les réservations
-│   │   ├── paiements/     # Routes pour les paiements
-│   │   ├── favoris/       # Routes pour les favoris
-│   │   ├── avis/          # Routes pour les avis
-│   │   ├── abonnements/   # Routes pour les abonnements
-│   │   ├── boosts/        # Routes pour les boosts
-│   │   └── admin/         # Routes admin
-│   └── layout.tsx         # Layout racine
-├── components/
-│   ├── ui/                # Composants shadcn/ui
-│   └── layout/            # Header, Footer
-├── lib/
-│   ├── api/               # Utilitaires API (auth, response)
-│   ├── supabase/          # Clients Supabase (server & client)
-│   ├── hooks/             # Hooks React (useAuth)
-│   ├── utils/             # Utilitaires (auth helpers)
-│   ├── prisma.ts          # Client Prisma
-│   └── stripe.ts          # Client Stripe
-├── prisma/
-│   └── schema.prisma      # Schéma de base de données
-├── i18n/                  # Configuration i18n
-├── messages/              # Fichiers de traduction
-└── types/                 # Types TypeScript
+├── app/                    # Pages Next.js (App Router)
+│   ├── [locale]/          # Pages internationalisées
+│   │   ├── dashboard/     # Dashboards (client, prestataire, admin)
+│   │   ├── login/         # Page de connexion
+│   │   └── signup/        # Page d'inscription
+│   └── api/               # Routes API
+│       └── auth/          # Routes d'authentification (mode dev)
+├── components/            # Composants React réutilisables
+│   ├── layout/           # Composants de layout (Header, Sidebar, etc.)
+│   └── ui/               # Composants UI (shadcn/ui)
+├── lib/                   # Utilitaires et hooks
+│   ├── hooks/            # Hooks React personnalisés
+│   ├── api/              # Utilitaires API
+│   └── utils/            # Fonctions utilitaires
+├── prisma/               # Schéma Prisma (optionnel)
+├── docs/                 # Documentation
+└── public/               # Fichiers statiques
 ```
 
-## 🎯 Fonctionnalités
+## 📚 Documentation
 
-### Côté Utilisateur
-- ✅ Exploration des offres avec filtres avancés
-- ✅ Pages de détails d'expérience
-- ✅ Système d'authentification complet (Supabase Auth)
-- ✅ Inscription/Connexion avec distinction Touriste/Prestataire
-- ✅ **Comptes multiples avec la même email** : Un utilisateur peut avoir un compte touriste et un compte prestataire avec la même adresse email (mots de passe différents)
-- ✅ Dashboard utilisateur avec profil, réservations, favoris
-- ✅ OAuth (Google, Facebook)
-- ✅ Déconnexion redirige vers la page d'accueil
-- ⏳ Réservation et paiement (structure en place)
-- ⏳ Profil utilisateur complet
+- [Guide de Démarrage](docs/GETTING_STARTED.md)
+- [Mode Développement](docs/DEVELOPMENT_MODE.md)
+- [État de l'Authentification](docs/AUTH_STATUS.md)
+- [Configuration Environnement](docs/ENV_SETUP.md)
+- [Dépannage](docs/TROUBLESHOOTING.md)
+- [API Routes](docs/API_ROUTES.md)
 
-### Côté Prestataire
-- ✅ Dashboard prestataire complet
-- ✅ Gestion d'annonces (CRUD)
-- ✅ Gestion des réservations
-- ✅ Système d'abonnements (GRATUIT, PRO, PREMIUM)
-- ✅ Boosts et mise en avant d'offres
-- ✅ Statistiques et revenus avec graphiques Chart.js
-- ⏳ Upload d'images/vidéos (structure prête)
+## ✨ Fonctionnalités
 
-### Côté Administrateur
-- ✅ Panel admin avec gestion complète
-- ✅ Modération des offres et prestataires
-- ✅ Statistiques globales avec graphiques Chart.js
-- ✅ Gestion des utilisateurs
-- ✅ Analytics avec graphiques interactifs (lignes, barres, secteurs)
+- ✅ **Dashboards** : Client, Prestataire, Admin avec données fictives
+- ✅ **Gestion des offres** : CRUD pour les prestataires
+- ✅ **Réservations** : Suivi des réservations (données fictives)
+- ✅ **Favoris** : Gestion des favoris (données fictives)
+- ✅ **Internationalisation** : FR/EN/AR
+- ✅ **Design responsive** : Mobile-first
+- ⏳ **Authentification** : Désactivée en mode dev
+- ⏳ **Paiements** : Non implémenté
+- ⏳ **Upload fichiers** : Non implémenté
 
-## 🗄️ Modèles de données
+## 🔄 Migration vers la Production
 
-Le schéma Prisma inclut:
-- `User` - Utilisateurs (touristes, prestataires, admins)
-  - **Contrainte unique** : `[email, role]` - permet à une même email d'avoir un compte USER et un compte PRESTATAIRE
-- `Prestataire` - Prestataires de services
-- `Offre` - Offres touristiques
-- `Reservation` - Réservations
-- `Paiement` - Paiements
-- `Avis` - Avis et notes
-- `Favori` - Favoris utilisateurs
-- `Message` - Messagerie
-- `Statistique` - Statistiques
+Pour passer en production, vous devrez :
 
-## 🌍 Internationalisation
+1. **Réactiver l'authentification**
+   - Choisir un système d'authentification (NextAuth, Supabase, etc.)
+   - Mettre à jour les routes API et hooks
 
-Le projet supporte 3 langues:
-- 🇫🇷 Français (par défaut)
-- 🇬🇧 English
-- 🇸🇦 العربية
+2. **Connecter une base de données**
+   - Configurer Prisma avec une vraie base PostgreSQL
+   - Remplacer les données fictives par des appels API réels
 
-Les traductions sont dans le dossier `messages/`.
+3. **Configurer les services externes**
+   - Stripe pour les paiements
+   - Service de stockage pour les images
 
-## 📝 Scripts disponibles
+Consultez [docs/AUTH_STATUS.md](docs/AUTH_STATUS.md) pour plus de détails.
 
-- `npm run dev` - Lancer le serveur de développement
-- `npm run build` - Construire pour la production
-- `npm run start` - Lancer le serveur de production
-- `npm run lint` - Lancer ESLint
+## 🛠️ Scripts Disponibles
 
-## 🔐 Sécurité
+```bash
+npm run dev          # Lancer le serveur de développement
+npm run build        # Construire pour la production
+npm run start        # Lancer le serveur de production
+npm run lint         # Vérifier le code avec ESLint
+```
 
-- Variables d'environnement pour les clés sensibles
-- Authentification via Supabase Auth
-- Paiements sécurisés via Stripe (PCI-DSS)
-- Protection CSRF intégrée
+## 📝 Notes
 
-## 📄 Licence
+- Le projet est en mode développement avec authentification désactivée
+- Les données sont fictives et ne sont pas persistées
+- Consultez la documentation dans `docs/` pour plus d'informations
 
-Propriétaire - GooTeranga
+## 🤝 Contribution
 
-## 👥 Contribution
-
-Ce projet est en développement actif. Pour contribuer, veuillez créer une issue ou une pull request.
-
-
-
-## 🔌 API Routes
-
-Le projet utilise Next.js API Routes pour toutes les opérations backend. Les routes sont disponibles sous `/api/`:
-
-### Routes disponibles
-
-- **Authentification**: `POST /api/auth/signup`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/session`, `GET /api/auth/callback`
-- **Offres**: `GET /api/offres`, `POST /api/offres`, `GET /api/offres/[id]`, `PUT /api/offres/[id]`, `DELETE /api/offres/[id]`
-- **Réservations**: `GET /api/reservations`, `POST /api/reservations`, `GET /api/reservations/[id]`, `PUT /api/reservations/[id]`, `DELETE /api/reservations/[id]`
-- **Paiements**: `POST /api/paiements/stripe/route`, `POST /api/paiements/stripe/webhook`
-- **Favoris**: `GET /api/favoris`, `POST /api/favoris`, `DELETE /api/favoris/[offreId]`
-- **Avis**: `POST /api/avis`
-- **Abonnements**: `GET /api/abonnements`, `POST /api/abonnements`
-- **Boosts**: `GET /api/boosts`, `POST /api/boosts`
-- **Admin**: `GET /api/admin/*` (stats, prestataires, membres, activités)
-
-Toutes les routes nécessitent une authentification (sauf certaines routes publiques). L'authentification est gérée via Supabase Auth avec gestion des rôles (USER, PRESTATAIRE, ADMIN).
-
-Pour plus de détails, consultez la documentation dans `docs/API_ROUTES.md`.
-
+Les contributions sont les bienvenues ! Consultez la documentation pour comprendre la structure du projet.

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -11,7 +11,6 @@ import { DashboardHeader } from '@/components/layout/DashboardHeader'
 import { AvatarUpload } from '@/components/ui/avatar-upload'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  BarChart3, 
   Eye, 
   Calendar, 
   DollarSign, 
@@ -21,7 +20,6 @@ import {
   Trash2,
   Bell,
   MessageSquare,
-  TrendingUp,
   CreditCard,
   Download,
   Crown,
@@ -29,6 +27,7 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  Loader2,
 } from 'lucide-react'
 import {
   Select,
@@ -38,17 +37,29 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { LineChart, BarChart, DoughnutChart } from '@/components/ui/charts'
+import { useAuth } from '@/lib/hooks/useAuth'
+import { useReservations } from '@/lib/hooks/useReservations'
+import { useOffres } from '@/lib/hooks/useOffres'
+import Image from 'next/image'
 
 export default function PrestataireDashboardPage() {
   const [activeSection, setActiveSection] = useState('overview')
   const [logoImage, setLogoImage] = useState<string | null>(null)
 
-  // Données utilisateur fictives
-  const userData = {
-    nom: 'Prestataire',
-    prenom: 'GooTeranga',
-    email: 'prestataire@gooteranga.com',
-  }
+  // Récupérer les données utilisateur depuis l'API
+  const { user, loading: authLoading } = useAuth()
+  const { reservations, loading: reservationsLoading } = useReservations()
+  const { offres, loading: offresLoading } = useOffres({ isActive: true })
+
+  // Données utilisateur depuis l'API
+  const userData = useMemo(() => ({
+    nom: user?.nom || '',
+    prenom: user?.prenom || '',
+    email: user?.email || '',
+    telephone: user?.telephone || '',
+    avatar: user?.avatar || null,
+    prestataire: user?.prestataire || null,
+  }), [user])
 
   const handleLogoChange = (file: File | null) => {
     if (file) {
@@ -62,72 +73,53 @@ export default function PrestataireDashboardPage() {
     }
   }
 
-  // Données fictives
-  const stats = {
-    vues: 1250,
-    reservations: 45,
-    revenus: 1250000,
-    satisfaction: 4.7,
-  }
+  // Calculer les statistiques depuis les vraies données
+  const stats = useMemo(() => {
+    const totalVues = offres.reduce((sum, offre) => sum + (offre._count?.reservations || 0) * 10, 0) // Estimation basée sur les réservations
+    const totalReservations = reservations.length
+    const totalRevenus = reservations
+      .filter(r => r.paiement?.statut === 'PAID')
+      .reduce((sum, r) => sum + Number(r.montant), 0)
+    const moyenneRating = offres.length > 0
+      ? offres.reduce((sum, offre) => sum + (offre.rating || 0), 0) / offres.length
+      : 0
 
-  const reservations = [
-    {
-      id: '1',
-      client: 'Jean Dupont',
-      offre: 'Chambre double vue mer',
-      date: '2024-03-15',
-      statut: 'pending',
-      montant: 35000,
-    },
-    {
-      id: '2',
-      client: 'Marie Martin',
-      offre: 'Tour guidé Dakar',
-      date: '2024-03-20',
-      statut: 'confirmed',
-      montant: 25000,
-    },
-  ]
+    return {
+      vues: totalVues,
+      reservations: totalReservations,
+      revenus: totalRevenus,
+      satisfaction: moyenneRating,
+    }
+  }, [offres, reservations])
 
-  const offres = [
-    {
-      id: '1',
-      titre: 'Chambre double vue mer',
-      prix: 35000,
-      vues: 245,
-      reservations: 12,
-      statut: 'active',
-    },
-    {
-      id: '2',
-      titre: 'Tour guidé Dakar',
-      prix: 25000,
-      vues: 180,
-      reservations: 8,
-      statut: 'active',
-    },
-  ]
+  // Filtrer les offres du prestataire
+  const mesOffres = useMemo(() => {
+    if (!user?.prestataire?.id) return []
+    return offres.filter(offre => offre.prestataire?.id === user.prestataire?.id)
+  }, [offres, user])
 
-  const paiements = [
-    {
-      id: '1',
-      montant: 31500,
-      commission: 3500,
-      methode: 'stripe',
-      date: '2024-03-10',
-      statut: 'paid',
-    },
-    {
-      id: '2',
-      montant: 22500,
-      commission: 2500,
-      methode: 'om',
-      date: '2024-03-08',
-      statut: 'paid',
-    },
-  ]
+  // Calculer le solde disponible (revenus payés moins commissions)
+  const solde = useMemo(() => {
+    return reservations
+      .filter(r => r.paiement?.statut === 'PAID')
+      .reduce((sum, r) => sum + Number(r.montant), 0)
+  }, [reservations])
 
-  const solde = 125000
+  // Paiements depuis les réservations payées
+  const paiements = useMemo(() => {
+    return reservations
+      .filter(r => r.paiement?.statut === 'PAID')
+      .map(r => ({
+        id: r.id,
+        montant: Number(r.montant),
+        commission: 0, // Pas de commission pour l'instant
+        methode: r.paiement?.methode || 'Non spécifié',
+        date: r.createdAt,
+        statut: 'paid',
+      }))
+  }, [reservations])
+
+  const loading = authLoading || reservationsLoading || offresLoading
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -212,17 +204,23 @@ export default function PrestataireDashboardPage() {
                 </motion.div>
               </CardHeader>
               <CardContent>
-                <motion.div 
-                  className="text-2xl font-bold"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
-                >
-                  {stats.vues.toLocaleString()}
-                </motion.div>
-                <p className="text-xs text-muted-foreground">
-                  <TrendingUp className="h-3 w-3 inline" /> +12% ce mois
-                </p>
+                {loading ? (
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                ) : (
+                  <>
+                    <motion.div 
+                      className="text-2xl font-bold"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
+                    >
+                      {stats.vues.toLocaleString()}
+                    </motion.div>
+                    <p className="text-xs text-muted-foreground">
+                      Estimation basée sur les réservations
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
             </motion.div>
@@ -248,7 +246,11 @@ export default function PrestataireDashboardPage() {
                   {stats.reservations}
                 </motion.div>
                 <p className="text-xs text-muted-foreground">
-                  {reservations.filter(r => r.statut === 'pending').length} en attente
+                  {loading ? (
+                    <Loader2 className="h-3 w-3 animate-spin inline" />
+                  ) : (
+                    `${reservations.filter(r => r.statut === 'PENDING').length} en attente`
+                  )}
                 </p>
               </CardContent>
             </Card>
@@ -261,15 +263,21 @@ export default function PrestataireDashboardPage() {
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <motion.div 
-                  className="text-2xl font-bold"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 200, delay: 0.4 }}
-                >
-                  {stats.revenus.toLocaleString()} FCFA
-                </motion.div>
-                <p className="text-xs text-muted-foreground">Ce mois</p>
+                {loading ? (
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                ) : (
+                  <>
+                    <motion.div 
+                      className="text-2xl font-bold"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 200, delay: 0.4 }}
+                    >
+                      {stats.revenus.toLocaleString()} FCFA
+                    </motion.div>
+                    <p className="text-xs text-muted-foreground">Total payé</p>
+                  </>
+                )}
               </CardContent>
             </Card>
             </motion.div>
@@ -286,15 +294,23 @@ export default function PrestataireDashboardPage() {
                 </motion.div>
               </CardHeader>
               <CardContent>
-                <motion.div 
-                  className="text-2xl font-bold"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 200, delay: 0.5 }}
-                >
-                  {stats.satisfaction}
-                </motion.div>
-                <p className="text-xs text-muted-foreground">Basé sur 23 avis</p>
+                {loading ? (
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                ) : (
+                  <>
+                    <motion.div 
+                      className="text-2xl font-bold"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 200, delay: 0.5 }}
+                    >
+                      {stats.satisfaction.toFixed(1)}
+                    </motion.div>
+                    <p className="text-xs text-muted-foreground">
+                      Basé sur {mesOffres.reduce((sum, o) => sum + (o._count?.avis || 0), 0)} avis
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
             </motion.div>
@@ -344,7 +360,7 @@ export default function PrestataireDashboardPage() {
                 <motion.div whileHover={{ scale: 1.02, x: 4 }} whileTap={{ scale: 0.98 }}>
                   <Button variant="outline" className="w-full justify-start" onClick={() => setActiveSection('reservations')}>
                     <Bell className="h-4 w-4 mr-2" />
-                    Voir les réservations ({reservations.filter(r => r.statut === 'pending').length})
+                    Voir les réservations ({loading ? '...' : reservations.filter(r => r.statut === 'PENDING').length})
                   </Button>
                 </motion.div>
                 <motion.div whileHover={{ scale: 1.02, x: 4 }} whileTap={{ scale: 0.98 }}>
@@ -366,36 +382,52 @@ export default function PrestataireDashboardPage() {
               <CardDescription>Dernières demandes de réservation</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {reservations.map((reservation, index) => (
-                  <motion.div
-                    key={reservation.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1, duration: 0.3 }}
-                    whileHover={{ scale: 1.02, x: 4 }}
-                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border rounded-lg hover:shadow-md transition-shadow"
-                  >
-                    <div>
-                      <h4 className="font-semibold">{reservation.offre}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {reservation.client} • {reservation.date}
-                      </p>
-                    </div>
-                    <div className="text-left sm:text-right w-full sm:w-auto">
-                      <Badge
-                        variant={reservation.statut === 'confirmed' ? 'default' : 'secondary'}
-                        className="mb-2 sm:mb-0"
-                      >
-                        {reservation.statut === 'pending' ? 'En attente' : 'Confirmée'}
-                      </Badge>
-                      <p className="text-sm font-medium mt-2">
-                        {reservation.montant.toLocaleString()} FCFA
-                      </p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : reservations.length === 0 ? (
+                <div className="text-center py-12">
+                  <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Aucune réservation</h3>
+                  <p className="text-muted-foreground">
+                    Vos réservations apparaîtront ici
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {reservations.slice(0, 5).map((reservation, index) => (
+                    <motion.div
+                      key={reservation.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1, duration: 0.3 }}
+                      whileHover={{ scale: 1.02, x: 4 }}
+                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border rounded-lg hover:shadow-md transition-shadow"
+                    >
+                      <div>
+                        <h4 className="font-semibold">{reservation.offre?.titre || 'Offre'}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {reservation.user ? `${reservation.user.prenom || ''} ${reservation.user.nom || ''}`.trim() || reservation.user.email : 'Client'} • {new Date(reservation.dateDebut).toLocaleDateString('fr-FR')}
+                        </p>
+                      </div>
+                      <div className="text-left sm:text-right w-full sm:w-auto">
+                        <Badge
+                          variant={reservation.statut === 'CONFIRMED' ? 'default' : 'secondary'}
+                          className="mb-2 sm:mb-0"
+                        >
+                          {reservation.statut === 'PENDING' ? 'En attente' : 
+                           reservation.statut === 'CONFIRMED' ? 'Confirmée' :
+                           reservation.statut === 'CANCELLED' ? 'Annulée' : 'Terminée'}
+                        </Badge>
+                        <p className="text-sm font-medium mt-2">
+                          {Number(reservation.montant).toLocaleString()} FCFA
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
           </motion.div>
@@ -434,54 +466,81 @@ export default function PrestataireDashboardPage() {
             </motion.div>
           </motion.div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {offres.map((offre, index) => (
-              <motion.div
-                key={offre.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.1, duration: 0.3 }}
-                whileHover={{ scale: 1.05, y: -5 }}
-              >
-              <Card className="overflow-hidden hover:shadow-xl transition-shadow duration-300">
-                <div className="h-48 bg-gradient-to-br from-orange-300 to-yellow-300" />
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <CardTitle className="text-lg">{offre.titre}</CardTitle>
-                    <Badge variant={offre.statut === 'active' ? 'default' : 'secondary'}>
-                      {offre.statut === 'active' ? 'Active' : 'Inactive'}
-                    </Badge>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : mesOffres.length === 0 ? (
+            <div className="text-center py-12">
+              <Plus className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Aucune offre</h3>
+              <p className="text-muted-foreground mb-4">
+                Créez votre première offre pour commencer
+              </p>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Créer une offre
+              </Button>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {mesOffres.map((offre, index) => (
+                <motion.div
+                  key={offre.id}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.1, duration: 0.3 }}
+                  whileHover={{ scale: 1.05, y: -5 }}
+                >
+                <Card className="overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                  <div className="h-48 bg-gradient-to-br from-orange-300 to-yellow-300 relative">
+                    {offre.images && offre.images.length > 0 && (
+                      <Image 
+                        src={offre.images[0]} 
+                        alt={offre.titre}
+                        fill
+                        className="object-cover"
+                      />
+                    )}
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Prix</p>
-                      <p className="font-medium">{offre.prix.toLocaleString()} FCFA</p>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <CardTitle className="text-lg">{offre.titre}</CardTitle>
+                      <Badge variant={offre.isActive ? 'default' : 'secondary'}>
+                        {offre.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
                     </div>
-                    <div>
-                      <p className="text-muted-foreground">Vues</p>
-                      <p className="font-medium">{offre.vues}</p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Prix</p>
+                        <p className="font-medium">{Number(offre.prix).toLocaleString()} FCFA</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Réservations</p>
+                        <p className="font-medium">{offre._count?.reservations || 0}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1">
-                      <Button variant="outline" size="sm" className="w-full">
-                        <Edit className="h-4 w-4 mr-2" />
-                        Modifier
-                      </Button>
-                    </motion.div>
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button variant="outline" size="sm">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </motion.div>
-                  </div>
-                </CardContent>
-              </Card>
-              </motion.div>
-            ))}
-          </div>
+                    <div className="flex gap-2">
+                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1">
+                        <Button variant="outline" size="sm" className="w-full">
+                          <Edit className="h-4 w-4 mr-2" />
+                          Modifier
+                        </Button>
+                      </motion.div>
+                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                        <Button variant="outline" size="sm">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </motion.div>
+                    </div>
+                  </CardContent>
+                </Card>
+                </motion.div>
+              ))}
+            </div>
+          )}
             </motion.div>
           )}
 
@@ -513,58 +572,75 @@ export default function PrestataireDashboardPage() {
               <CardDescription>Acceptez ou refusez les demandes de réservation</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {reservations.map((reservation, index) => (
-                  <motion.div
-                    key={reservation.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1, duration: 0.3 }}
-                    whileHover={{ scale: 1.01, y: -2 }}
-                    className="border rounded-lg p-4 sm:p-6 space-y-4 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="text-lg font-semibold">{reservation.offre}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Client: {reservation.client}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Date: {reservation.date}
-                        </p>
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : reservations.length === 0 ? (
+                <div className="text-center py-12">
+                  <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Aucune réservation</h3>
+                  <p className="text-muted-foreground">
+                    Vos réservations apparaîtront ici
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {reservations.map((reservation, index) => (
+                    <motion.div
+                      key={reservation.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1, duration: 0.3 }}
+                      whileHover={{ scale: 1.01, y: -2 }}
+                      className="border rounded-lg p-4 sm:p-6 space-y-4 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="text-lg font-semibold">{reservation.offre?.titre || 'Offre'}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Client: {reservation.user ? `${reservation.user.prenom || ''} ${reservation.user.nom || ''}`.trim() || reservation.user.email : 'Non spécifié'}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Date: {new Date(reservation.dateDebut).toLocaleDateString('fr-FR')}
+                            {reservation.dateFin && ` - ${new Date(reservation.dateFin).toLocaleDateString('fr-FR')}`}
+                          </p>
+                        </div>
+                        <Badge
+                          variant={reservation.statut === 'CONFIRMED' ? 'default' : 'secondary'}
+                        >
+                          {reservation.statut === 'PENDING' ? 'En attente' : 
+                           reservation.statut === 'CONFIRMED' ? 'Confirmée' :
+                           reservation.statut === 'CANCELLED' ? 'Annulée' : 'Terminée'}
+                        </Badge>
                       </div>
-                      <Badge
-                        variant={reservation.statut === 'confirmed' ? 'default' : 'secondary'}
-                      >
-                        {reservation.statut === 'pending' ? 'En attente' : 'Confirmée'}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-lg font-bold">
-                        {reservation.montant.toLocaleString()} FCFA
-                      </p>
-                    {reservation.statut === 'pending' && (
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                          <Button variant="outline" size="sm" className="w-full sm:w-auto">Refuser</Button>
-                        </motion.div>
-                        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                          <Button size="sm" className="w-full sm:w-auto">Accepter</Button>
-                        </motion.div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-lg font-bold">
+                          {Number(reservation.montant).toLocaleString()} FCFA
+                        </p>
+                      {reservation.statut === 'PENDING' && (
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                            <Button variant="outline" size="sm" className="w-full sm:w-auto">Refuser</Button>
+                          </motion.div>
+                          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                            <Button size="sm" className="w-full sm:w-auto">Accepter</Button>
+                          </motion.div>
+                        </div>
+                      )}
                       </div>
-                    )}
-                    </div>
-                    {reservation.statut === 'pending' && (
-                      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                        <Button variant="ghost" size="sm" className="w-full sm:w-auto">
-                          <MessageSquare className="h-4 w-4 mr-2" />
-                          Contacter le client
-                        </Button>
-                      </motion.div>
-                    )}
-                  </motion.div>
-                ))}
-              </div>
+                      {reservation.statut === 'PENDING' && (
+                        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                          <Button variant="ghost" size="sm" className="w-full sm:w-auto">
+                            <MessageSquare className="h-4 w-4 mr-2" />
+                            Contacter le client
+                          </Button>
+                        </motion.div>
+                      )}
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
             </motion.div>
@@ -614,33 +690,47 @@ export default function PrestataireDashboardPage() {
 
                 <div className="space-y-4">
                   <h3 className="font-semibold">Historique des paiements</h3>
-                  {paiements.map((paiement, index) => (
-                    <motion.div
-                      key={paiement.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1, duration: 0.3 }}
-                      whileHover={{ scale: 1.02, x: 4 }}
-                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border rounded-lg hover:shadow-md transition-shadow"
-                    >
-                      <div>
-                        <p className="font-medium">
-                          {paiement.montant.toLocaleString()} FCFA
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {paiement.date} • {paiement.methode.toUpperCase()}
-                        </p>
-                      </div>
-                      <div className="text-left sm:text-right w-full sm:w-auto">
-                        <Badge variant="secondary" className="mb-2 sm:mb-0">
-                          Commission: {paiement.commission.toLocaleString()} FCFA
-                        </Badge>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Net: {(paiement.montant - paiement.commission).toLocaleString()} FCFA
-                        </p>
-                      </div>
-                    </motion.div>
-                  ))}
+                  {loading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : paiements.length === 0 ? (
+                    <div className="text-center py-12">
+                      <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">Aucun paiement</h3>
+                      <p className="text-muted-foreground">
+                        Vos paiements apparaîtront ici après les réservations payées
+                      </p>
+                    </div>
+                  ) : (
+                    paiements.map((paiement, index) => (
+                      <motion.div
+                        key={paiement.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.1, duration: 0.3 }}
+                        whileHover={{ scale: 1.02, x: 4 }}
+                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border rounded-lg hover:shadow-md transition-shadow"
+                      >
+                        <div>
+                          <p className="font-medium">
+                            {paiement.montant.toLocaleString()} FCFA
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(paiement.date).toLocaleDateString('fr-FR')} • {paiement.methode.toUpperCase()}
+                          </p>
+                        </div>
+                        <div className="text-left sm:text-right w-full sm:w-auto">
+                          <Badge variant="secondary" className="mb-2 sm:mb-0">
+                            Commission: {paiement.commission.toLocaleString()} FCFA
+                          </Badge>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Net: {(paiement.montant - paiement.commission).toLocaleString()} FCFA
+                          </p>
+                        </div>
+                      </motion.div>
+                    ))
+                  )}
                 </div>
 
                 <div className="pt-4 border-t">

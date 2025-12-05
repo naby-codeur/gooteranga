@@ -4,7 +4,7 @@ Ce document décrit toutes les routes API disponibles dans GooTeranga.
 
 ## 🔐 Authentification
 
-Toutes les routes API (sauf celles explicitement publiques) nécessitent une authentification via Supabase Auth. L'authentification est gérée automatiquement via les cookies de session.
+⚠️ **Mode Développement** : Toutes les routes API d'authentification retournent des réponses fictives. L'authentification est désactivée.
 
 ### Rôles utilisateurs
 
@@ -441,7 +441,7 @@ export function OffresList() {
 
 ## 🔒 Sécurité
 
-- Toutes les routes authentifiées vérifient l'utilisateur via Supabase Auth
+- En mode développement, toutes les routes d'authentification retournent des réponses fictives
 - Les permissions sont vérifiées (propriétaire, rôle, etc.)
 - Les validations sont effectuées côté serveur
 - Les webhooks Stripe utilisent la vérification de signature

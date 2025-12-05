@@ -3,14 +3,22 @@ import { routing } from './routing'
 import fr from '../messages/fr.json'
 import en from '../messages/en.json'
 import ar from '../messages/ar.json'
+import es from '../messages/es.json'
+import pt from '../messages/pt.json'
+import de from '../messages/de.json'
+import it from '../messages/it.json'
 
 const messages = {
   fr,
   en,
   ar,
+  es,
+  pt,
+  de,
+  it,
 }
 
-type Locale = 'fr' | 'en' | 'ar'
+type Locale = 'fr' | 'en' | 'ar' | 'es' | 'pt' | 'de' | 'it'
 
 export default getRequestConfig(async ({ requestLocale }) => {
   // This typically corresponds to the `[locale]` segment

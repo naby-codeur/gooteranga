@@ -15,7 +15,6 @@ import {
   TrendingUp,
   CheckCircle,
   XCircle,
-  Clock,
   Star,
   Eye,
   FileText,
@@ -131,9 +130,7 @@ export default function AdminDashboardPage() {
   // Données fictives - à remplacer par des appels API réels
   const stats = {
     prestatairesTotal: 156,
-    prestatairesEnAttente: 12,
     activitesTotal: 342,
-    activitesEnAttente: 8,
     reservationsTotal: 1245,
     reservationsMois: 89,
     revenusTotal: 45230000,
@@ -150,6 +147,7 @@ export default function AdminDashboardPage() {
     if (activeSection === 'utilisateurs') {
       loadUtilisateurs()
     }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSection, filtreRole, filtreStatut, searchUtilisateur])
 
@@ -379,7 +377,7 @@ export default function AdminDashboardPage() {
                           <CardContent>
                             <div className="text-2xl font-bold">{stats.prestatairesTotal}</div>
                             <p className="text-xs text-muted-foreground">
-                              {stats.prestatairesEnAttente} en attente de validation
+                              Prestataires actifs
                             </p>
                           </CardContent>
                         </Card>
@@ -533,9 +531,9 @@ export default function AdminDashboardPage() {
                             onClick={() => setActiveSection('prestataires')}
                           >
                             <Users className="h-5 w-5 mb-2" />
-                            <span className="font-medium">Valider prestataires</span>
+                            <span className="font-medium">Gérer prestataires</span>
                             <span className="text-xs text-muted-foreground mt-1">
-                              {stats.prestatairesEnAttente} en attente
+                              {stats.prestatairesTotal} prestataires
                             </span>
                           </Button>
                           <Button 
@@ -544,9 +542,9 @@ export default function AdminDashboardPage() {
                             onClick={() => setActiveSection('activites')}
                           >
                             <Package className="h-5 w-5 mb-2" />
-                            <span className="font-medium">Modérer activités</span>
+                            <span className="font-medium">Gérer activités</span>
                             <span className="text-xs text-muted-foreground mt-1">
-                              {stats.activitesEnAttente} en attente
+                              {stats.activitesTotal} activités
                             </span>
                           </Button>
                           <Button 
@@ -594,7 +592,7 @@ export default function AdminDashboardPage() {
                         Gestion des Prestataires
                       </h2>
                       <p className="text-muted-foreground">
-                        Validez, modérez et gérez les prestataires de la plateforme
+                        Gérez et modérez les prestataires de la plateforme
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -621,8 +619,7 @@ export default function AdminDashboardPage() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">Tous</SelectItem>
-                            <SelectItem value="verified">Vérifiés</SelectItem>
-                            <SelectItem value="pending">En attente</SelectItem>
+                            <SelectItem value="verified">Actifs</SelectItem>
                             <SelectItem value="suspended">Suspendus</SelectItem>
                           </SelectContent>
                         </Select>
@@ -673,15 +670,10 @@ export default function AdminDashboardPage() {
                                             <Ban className="h-3 w-3 mr-1" />
                                             Suspendu
                                           </Badge>
-                                        ) : prestataire.isVerified ? (
+                                        ) : (
                                           <Badge variant="default" className="bg-green-500">
                                             <CheckCircle className="h-3 w-3 mr-1" />
-                                            Vérifié
-                                          </Badge>
-                                        ) : (
-                                          <Badge variant="secondary">
-                                            <Clock className="h-3 w-3 mr-1" />
-                                            En attente
+                                            Actif
                                           </Badge>
                                         )}
                                       </h3>
@@ -719,62 +711,6 @@ export default function AdminDashboardPage() {
                                       <UserCheck className="h-4 w-4 mr-2" />
                                       Réactiver
                                     </Button>
-                                  ) : !prestataire.isVerified ? (
-                                    <>
-                                      <Button 
-                                        size="sm" 
-                                        className="w-full lg:w-auto"
-                                        onClick={async () => {
-                                          try {
-                                            const response = await fetch('/api/admin/prestataires', {
-                                              method: 'PATCH',
-                                              headers: { 'Content-Type': 'application/json' },
-                                              body: JSON.stringify({ prestataireId: prestataire.id, action: 'validate' })
-                                            })
-                                            const data = await response.json()
-                                            if (response.ok && data.success) {
-                                              alert('Prestataire validé avec succès')
-                                              loadPrestataires()
-                                            } else {
-                                              alert(data.error || 'Erreur lors de la validation')
-                                            }
-                                          } catch (error) {
-                                            console.error('Erreur:', error)
-                                            alert('Erreur lors de la validation')
-                                          }
-                                        }}
-                                      >
-                                        <CheckCircle className="h-4 w-4 mr-2" />
-                                        Valider
-                                      </Button>
-                                      <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        className="w-full lg:w-auto"
-                                        onClick={async () => {
-                                          try {
-                                            const response = await fetch('/api/admin/prestataires', {
-                                              method: 'PATCH',
-                                              headers: { 'Content-Type': 'application/json' },
-                                              body: JSON.stringify({ prestataireId: prestataire.id, action: 'reject' })
-                                            })
-                                            const data = await response.json()
-                                            if (response.ok && data.success) {
-                                              alert('Prestataire rejeté')
-                                              loadPrestataires()
-                                            } else {
-                                              alert(data.error || 'Erreur lors du rejet')
-                                            }
-                                          } catch (error) {
-                                            console.error('Erreur:', error)
-                                            alert('Erreur lors du rejet')
-                                          }
-                                        }}
-                                      >
-                                        <XCircle className="h-4 w-4 mr-2" />
-                                        Rejeter
-                                      </Button>
-                                    </>
                                   ) : (
                                     <>
                                       <Button variant="outline" size="sm" className="w-full lg:w-auto">
@@ -819,7 +755,7 @@ export default function AdminDashboardPage() {
                         Gestion des Activités
                       </h2>
                       <p className="text-muted-foreground">
-                        Validez, modérez et gérez toutes les activités touristiques
+                        Gérez et modérez toutes les activités touristiques
                       </p>
                     </div>
                   </div>
@@ -842,7 +778,6 @@ export default function AdminDashboardPage() {
                             <SelectItem value="all">Toutes</SelectItem>
                             <SelectItem value="active">Actives</SelectItem>
                             <SelectItem value="inactive">Inactives</SelectItem>
-                            <SelectItem value="pending">En attente</SelectItem>
                           </SelectContent>
                         </Select>
                         <Select>
@@ -1652,6 +1587,22 @@ export default function AdminDashboardPage() {
                         </div>
                         <div className="flex items-center justify-between">
                           <span>Arabe</span>
+                          <Badge variant="default">Actif</Badge>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Espagnol</span>
+                          <Badge variant="default">Actif</Badge>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Portugais</span>
+                          <Badge variant="default">Actif</Badge>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Allemand</span>
+                          <Badge variant="default">Actif</Badge>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Italien</span>
                           <Badge variant="default">Actif</Badge>
                         </div>
                         <Button variant="outline" className="w-full mt-4">

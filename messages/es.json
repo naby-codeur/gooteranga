@@ -1,0 +1,47 @@
+{
+  "common": {
+    "welcome": "Bienvenido",
+    "explore": "Explorar",
+    "book": "Reservar",
+    "login": "Iniciar sesión",
+    "signup": "Registrarse",
+    "logout": "Cerrar sesión",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "price": "Precio",
+    "rating": "Calificación",
+    "reviews": "Reseñas",
+    "view": "Ver",
+    "bookNow": "Reservar ahora",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "submit": "Enviar"
+  },
+  "home": {
+    "title": "Explora Senegal",
+    "subtitle": "Descubre las mejores experiencias turísticas",
+    "cta": "Comenzar la exploración",
+    "popularDestinations": "Destinos populares",
+    "categories": "Categorías",
+    "featured": "Destacados"
+  },
+  "explorer": {
+    "title": "Explorar",
+    "filters": "Filtros",
+    "results": "Resultados",
+    "noResults": "No se encontraron resultados"
+  },
+  "auth": {
+    "loginTitle": "Iniciar sesión",
+    "signupTitle": "Registrarse",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "confirmPassword": "Confirmar contraseña",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "alreadyHaveAccount": "¿Ya tienes una cuenta?",
+    "noAccount": "¿Aún no tienes una cuenta?"
+  }
+}
+

@@ -1,9 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
-import { apiFetch } from './useApi'
+import { useState, useEffect } from 'react'
 
 export interface User {
   id: string
@@ -31,89 +28,123 @@ interface UseAuthReturn {
 
 /**
  * Hook pour gérer l'authentification côté client
+ * Mode développement: retourne un utilisateur fictif
  */
 export function useAuth(): UseAuthReturn {
+  // Détecter le type d'utilisateur selon l'URL
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const router = useRouter()
-
-  const fetchSession = useCallback(async () => {
-    try {
-      const result = await apiFetch<{ user: User }>('/api/auth/session')
-
-      // Si 401 ou 403, l'utilisateur n'est pas authentifié (c'est normal)
-      if (result.status === 401 || result.status === 403) {
-        setUser(null)
-        setLoading(false)
-        return
-      }
-
-      if (result.success && result.data?.user) {
-        const userData = result.data.user
-        // Détecter et nettoyer les utilisateurs mock invalides
-        if (userData.email && (userData.email.includes('mock@example.com') || userData.email.includes('mock-id'))) {
-          console.warn('Invalid mock user detected, cleaning up session...')
-          setUser(null)
-          // Nettoyer la session Supabase
-          const supabase = createClient()
-          await supabase.auth.signOut()
-          await fetch('/api/auth/logout', { method: 'POST' })
-          return
-        }
-        setUser(userData)
-      } else {
-        setUser(null)
-      }
-    } catch (error) {
-      console.error('Error fetching session:', error)
-      setUser(null)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
 
   useEffect(() => {
-    fetchSession()
+    // Simuler un délai de chargement
+    const timer = setTimeout(() => {
+      // Déterminer le rôle selon l'URL actuelle
+      const path = window.location.pathname
+      let mockUser: User
 
-    // Écouter les changements d'authentification Supabase
-    const supabase = createClient()
-    
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        fetchSession()
-        router.refresh()
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null)
-        router.refresh()
+      if (path.includes('/dashboard/admin')) {
+        // Utilisateur admin fictif
+        mockUser = {
+          id: 'dev-admin-id',
+          email: 'admin@gooteranga.com',
+          nom: 'Administrateur',
+          prenom: 'Principal',
+          telephone: '+221 77 000 00 00',
+          role: 'ADMIN',
+          avatar: null,
+        }
+      } else if (path.includes('/dashboard/prestataire')) {
+        // Utilisateur prestataire fictif
+        mockUser = {
+          id: 'dev-prestataire-id',
+          email: 'prestataire@example.com',
+          nom: 'Dupont',
+          prenom: 'Jean',
+          telephone: '+221 77 123 45 67',
+          role: 'PRESTATAIRE',
+          avatar: null,
+          prestataire: {
+            id: 'dev-prestataire-profile-id',
+            nomEntreprise: 'Hôtel Teranga',
+            type: 'HOTEL',
+            isVerified: true,
+            planType: 'FREE',
+          },
+        }
+      } else {
+        // Utilisateur client fictif
+        mockUser = {
+          id: 'dev-user-id',
+          email: 'client@example.com',
+          nom: 'Martin',
+          prenom: 'Marie',
+          telephone: '+221 77 987 65 43',
+          role: 'USER',
+          avatar: null,
+        }
       }
-    })
 
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [router, fetchSession])
+      setUser(mockUser)
+      setLoading(false)
+    }, 100)
+
+    return () => clearTimeout(timer)
+  }, [])
 
   const signOut = async () => {
-    try {
-      const supabase = createClient()
-      await supabase.auth.signOut()
-      await fetch('/api/auth/logout', { method: 'POST' })
-      setUser(null)
-      router.push('/')
-      router.refresh()
-    } catch (error) {
-      console.error('Error signing out:', error)
-      // En cas d'erreur, rediriger quand même
-      router.push('/')
-      router.refresh()
-    }
+    setUser(null)
+    // Ne rien faire en mode développement
   }
 
   const refresh = async () => {
-    await fetchSession()
-    router.refresh()
+    // Recharger l'utilisateur fictif
+    setLoading(true)
+    setTimeout(() => {
+      const path = window.location.pathname
+      let mockUser: User
+
+      if (path.includes('/dashboard/admin')) {
+        mockUser = {
+          id: 'dev-admin-id',
+          email: 'admin@gooteranga.com',
+          nom: 'Administrateur',
+          prenom: 'Principal',
+          telephone: '+221 77 000 00 00',
+          role: 'ADMIN',
+          avatar: null,
+        }
+      } else if (path.includes('/dashboard/prestataire')) {
+        mockUser = {
+          id: 'dev-prestataire-id',
+          email: 'prestataire@example.com',
+          nom: 'Dupont',
+          prenom: 'Jean',
+          telephone: '+221 77 123 45 67',
+          role: 'PRESTATAIRE',
+          avatar: null,
+          prestataire: {
+            id: 'dev-prestataire-profile-id',
+            nomEntreprise: 'Hôtel Teranga',
+            type: 'HOTEL',
+            isVerified: true,
+            planType: 'FREE',
+          },
+        }
+      } else {
+        mockUser = {
+          id: 'dev-user-id',
+          email: 'client@example.com',
+          nom: 'Martin',
+          prenom: 'Marie',
+          telephone: '+221 77 987 65 43',
+          role: 'USER',
+          avatar: null,
+        }
+      }
+
+      setUser(mockUser)
+      setLoading(false)
+    }, 100)
   }
 
   return { user, loading, signOut, refresh }

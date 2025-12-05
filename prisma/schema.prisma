@@ -147,7 +147,7 @@ model Prestataire {
   email         String?
   siteWeb       String?
   logo          String?
-  isVerified    Boolean         @default(false)
+  isVerified    Boolean         @default(true)
   planType      PlanType        @default(GRATUIT)
   planExpiresAt DateTime? // Date d'expiration du plan actuel
   solde         Decimal         @default(0) @db.Decimal(10, 2)

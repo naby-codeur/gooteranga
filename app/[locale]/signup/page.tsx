@@ -72,16 +72,28 @@ export default function SignupPage() {
       }
     }
 
+    // Normaliser l'email (minuscules, trim)
+    const normalizedEmail = formData.email.toLowerCase().trim()
+    
+    // Validation de l'email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(normalizedEmail)) {
+      setError('Format d\'email invalide')
+      return
+    }
+
     setIsLoading(true)
 
     try {
+      // Mode développement: pas de nettoyage de session nécessaire
+
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: formData.email,
+          email: normalizedEmail,
           password: formData.password,
           nom: formData.nom,
           prenom: formData.prenom || null,
@@ -191,9 +203,7 @@ export default function SignupPage() {
           {!authLoading && user && (
             <div className="p-3 text-sm text-blue-600 bg-blue-50 border border-blue-200 rounded-md mb-4">
               <p className="font-medium mb-2">Vous êtes déjà connecté en tant que {user.email}</p>
-              <p className="text-xs mb-2">Pour créer un nouveau compte, veuillez d
-                
-                &apos;abord vous déconnecter.</p>
+              <p className="text-xs mb-2">Pour créer un nouveau compte, veuillez d&apos;abord vous déconnecter.</p>
               <div className="flex gap-2">
                 <Button
                   type="button"
@@ -526,26 +536,16 @@ export default function SignupPage() {
             <Button
               variant="outline"
               type="button"
-              onClick={() => {
-                const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-                const redirectTo = `${window.location.origin}/api/auth/callback?next=${encodeURIComponent('/dashboard')}`
-                window.location.href = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectTo)}`
-              }}
-              disabled={isLoading}
+              disabled={true}
             >
-              Google
+              Google (non disponible en mode dev)
             </Button>
             <Button
               variant="outline"
               type="button"
-              onClick={() => {
-                const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-                const redirectTo = `${window.location.origin}/api/auth/callback?next=${encodeURIComponent('/dashboard')}`
-                window.location.href = `${supabaseUrl}/auth/v1/authorize?provider=facebook&redirect_to=${encodeURIComponent(redirectTo)}`
-              }}
-              disabled={isLoading}
+              disabled={true}
             >
-              Facebook
+              Facebook (non disponible en mode dev)
             </Button>
           </div>
 

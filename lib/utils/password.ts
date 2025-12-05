@@ -64,8 +64,8 @@ export async function validatePassword(password: string): Promise<{
 }
 
 /**
- * Vérifie si un message d'erreur Supabase indique un mot de passe compromis
- * @param errorMessage - Le message d'erreur de Supabase
+ * Vérifie si un message d'erreur indique un mot de passe compromis
+ * @param errorMessage - Le message d'erreur
  * @returns true si le message indique un mot de passe compromis
  */
 export function isHIBPError(errorMessage: string | undefined | null): boolean {
@@ -85,8 +85,8 @@ export function isHIBPError(errorMessage: string | undefined | null): boolean {
 }
 
 /**
- * Extrait un message d'erreur utilisateur-friendly depuis une erreur Supabase HIBP
- * @param errorMessage - Le message d'erreur de Supabase
+ * Extrait un message d'erreur utilisateur-friendly depuis une erreur HIBP
+ * @param errorMessage - Le message d'erreur
  * @returns Un message d'erreur formaté pour l'utilisateur
  */
 export function getHIBPErrorMessage(errorMessage: string | undefined | null): string {

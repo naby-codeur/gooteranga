@@ -10,8 +10,7 @@ export default function AuthCallbackPage() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Attendre que le callback Supabase soit traité par le middleware/API
-    // puis récupérer la session et rediriger vers le bon dashboard
+    // Mode développement: récupérer la session et rediriger vers le bon dashboard
     const fetchSessionAndRedirect = async () => {
       try {
         // Récupérer la session pour connaître le rôle

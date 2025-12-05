@@ -1,29 +1,13 @@
-import { redirect } from 'next/navigation'
-import { getAuthUser } from '@/lib/api/auth'
-import { getDashboardPath } from '@/lib/utils/auth'
+// Authentification désactivée pour le développement - accès direct avec données fictives
 
 export default async function AdminLayout({
   children,
-  params,
+  params: _params,
 }: {
   children: React.ReactNode
   params: Promise<{ locale: string }>
 }) {
-  const { locale } = await params
-  
-  // Toujours exiger l'authentification pour accéder au dashboard admin
-  const user = await getAuthUser()
-
-  // Rediriger si non authentifié
-  if (!user) {
-    redirect(`/${locale}/login?next=/${locale}/dashboard/admin`)
-  }
-
-  // Rediriger si pas admin
-  if (user.role !== 'ADMIN') {
-    redirect(`/${locale}${getDashboardPath(user.role)}`)
-  }
-
+  // Accès direct sans vérification d'authentification
   return <>{children}</>
 }
 

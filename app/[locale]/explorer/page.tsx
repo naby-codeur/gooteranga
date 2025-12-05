@@ -78,7 +78,7 @@ export default function ExplorerPage() {
 
   // Transformer les offres en expériences pour l'affichage
   const experiences = useMemo(() => {
-    let sorted = [...offres]
+    const sorted = [...offres]
     
     // Trier selon le critère sélectionné
     switch (sortBy) {

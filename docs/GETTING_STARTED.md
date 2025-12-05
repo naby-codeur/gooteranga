@@ -1,13 +1,13 @@
 # 🚀 Guide de Démarrage Rapide - GooTeranga
 
-Ce guide vous aidera à démarrer rapidement avec le projet GooTeranga en 5 minutes.
+Ce guide vous aidera à démarrer rapidement avec le projet GooTeranga en moins de 5 minutes.
 
 ## 📋 Prérequis
 
-- Node.js 18+ et npm
-- Compte Supabase (gratuit)
-- Compte Stripe (pour les paiements)
-- Compte CinetPay (optionnel, pour les paiements mobiles)
+- **Node.js 18+** et npm
+- **Git** (pour cloner le projet)
+
+> ⚠️ **Note** : Le projet fonctionne actuellement en mode développement. Aucune base de données ou service externe n'est nécessaire pour commencer.
 
 ## 🚀 Installation rapide
 
@@ -19,54 +19,18 @@ cd gooteranga
 npm install
 ```
 
-### 2. Configuration Supabase
+### 2. Configuration minimale
 
-1. Créer un projet sur [supabase.com](https://supabase.com)
-2. Récupérer l'URL et la clé anonyme depuis les paramètres du projet
-3. Créer une base de données PostgreSQL
-
-### 3. Configuration de la base de données
-
-1. Copier `.env.example` vers `.env`
-2. Remplir `DATABASE_URL` avec votre URL Supabase:
-   ```
-   DATABASE_URL="postgresql://postgres:[PASSWORD]@[HOST]:5432/postgres"
-   ```
-3. Générer le client Prisma:
-   ```bash
-   npx prisma generate
-   ```
-4. Appliquer le schéma à la base de données:
-   ```bash
-   npx prisma db push
-   ```
-
-### 4. Configuration des variables d'environnement
-
-Remplir le fichier `.env` avec vos clés:
+Créez un fichier `.env.local` à la racine du projet :
 
 ```env
-# Database
-DATABASE_URL="postgresql://..."
-
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-
-# Stripe (optionnel pour commencer)
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
-STRIPE_SECRET_KEY=sk_test_...
-
-# CinetPay (optionnel)
-CINETPAY_API_KEY=your_api_key
-CINETPAY_SITE_ID=your_site_id
-
-# App
+# URL de l'application
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-### 5. Lancer le projet
+C'est tout ! Le projet peut fonctionner avec cette seule variable.
+
+### 3. Lancer le projet
 
 ```bash
 npm run dev
@@ -74,120 +38,99 @@ npm run dev
 
 Ouvrir [http://localhost:3000](http://localhost:3000)
 
+### 4. Accéder aux dashboards
+
+En mode développement, vous pouvez accéder directement aux dashboards :
+
+- **Dashboard Client** : http://localhost:3000/fr/dashboard
+- **Dashboard Prestataire** : http://localhost:3000/fr/dashboard/prestataire  
+- **Dashboard Admin** : http://localhost:3000/fr/dashboard/admin
+
+> ✅ Aucune authentification requise en mode développement !
+
+## 📊 Données fictives
+
+Le projet utilise des données fictives pour le développement :
+
+- **Utilisateurs** : Générés automatiquement selon l'URL
+- **Réservations** : 3 réservations fictives
+- **Favoris** : 3 favoris fictifs
+- **Offres** : Données fictives via les hooks
+
+## 🔧 Configuration optionnelle
+
+### Base de données (optionnel)
+
+Si vous souhaitez utiliser Prisma avec une vraie base de données :
+
+1. **Installer PostgreSQL** (localement ou via service cloud)
+
+2. **Configurer la connexion** dans `.env.local` :
+```env
+DATABASE_URL=postgresql://user:password@localhost:5432/gooteranga
+DIRECT_URL=postgresql://user:password@localhost:5432/gooteranga
+```
+
+3. **Générer le client Prisma** :
+```bash
+npx prisma generate
+```
+
+4. **Appliquer le schéma** :
+```bash
+npx prisma db push
+```
+
+> 💡 **Note** : En mode développement, la base de données est optionnelle car les données sont fictives.
+
 ## 🎨 Personnalisation
+
+### Langues
+
+Le projet supporte 3 langues :
+- Français (`fr`) - par défaut
+- Anglais (`en`)
+- Arabe (`ar`)
+
+Accéder à une langue spécifique :
+- http://localhost:3000/fr (Français)
+- http://localhost:3000/en (English)
+- http://localhost:3000/ar (العربية)
 
 ### Couleurs
 
-Les couleurs principales sont définies dans `app/globals.css`. Vous pouvez les modifier pour correspondre à votre identité visuelle.
+Les couleurs du thème peuvent être modifiées dans :
+- `app/globals.css` - Variables CSS
+- `tailwind.config` - Configuration Tailwind
 
-### Traductions
+## 📚 Documentation Complète
 
-Les fichiers de traduction sont dans `messages/`:
-- `fr.json` - Français
-- `en.json` - English
-- `ar.json` - العربية
+- [Mode Développement](DEVELOPMENT_MODE.md) - Guide complet du mode dev
+- [État de l'Authentification](AUTH_STATUS.md) - Détails sur l'auth
+- [Configuration Environnement](ENV_SETUP.md) - Variables d'environnement
+- [API Routes](API_ROUTES.md) - Documentation des routes API
+- [Dépannage](TROUBLESHOOTING.md) - Solutions aux problèmes courants
 
-### Composants UI
+## 🔄 Prochaines Étapes
 
-Les composants shadcn/ui peuvent être ajoutés avec:
-```bash
-npx shadcn@latest add [component-name]
-```
+1. **Explorer les dashboards** : Visitez les différents dashboards pour voir les fonctionnalités
+2. **Modifier les données fictives** : Éditez les hooks dans `lib/hooks/` pour personnaliser les données
+3. **Développer des fonctionnalités** : Ajoutez de nouvelles fonctionnalités aux dashboards
+4. **Préparer la production** : Consultez [AUTH_STATUS.md](AUTH_STATUS.md) pour la migration
 
-## 📁 Structure des dossiers
+## ❓ Besoin d'aide ?
 
-```
-app/
-  [locale]/          # Pages avec i18n
-    page.tsx         # Accueil
-    explorer/        # Exploration
-    experience/      # Détails expérience
-    login/           # Connexion
-    signup/          # Inscription
-components/
-  ui/                # Composants shadcn/ui
-  layout/            # Header, Footer
-  map/               # Composants cartes
-lib/
-  supabase/          # Clients Supabase
-  prisma.ts          # Client Prisma
-  stripe.ts          # Client Stripe
-  regions.ts         # Données régions
-prisma/
-  schema.prisma      # Schéma base de données
-messages/            # Traductions
-```
+- Consultez [TROUBLESHOOTING.md](TROUBLESHOOTING.md) pour les problèmes courants
+- Vérifiez les logs de la console pour les erreurs
+- Consultez la documentation dans le dossier `docs/`
 
-## 🔐 Authentification
+## ✅ Vérification
 
-L'authentification utilise Supabase Auth. Pour l'implémenter:
+Une fois le serveur lancé, vous devriez pouvoir :
 
-1. Configurer Supabase Auth dans le dashboard
-2. Créer les pages de connexion/inscription (déjà créées)
-3. Ajouter la logique d'authentification dans les composants
+- ✅ Accéder à http://localhost:3000
+- ✅ Accéder aux dashboards sans authentification
+- ✅ Voir des données fictives dans les dashboards
+- ✅ Naviguer entre les différentes sections
 
-## 💳 Paiements
-
-### Stripe
-
-1. Créer un compte Stripe
-2. Récupérer les clés API (mode test)
-3. Configurer les webhooks pour les événements de paiement
-
-### CinetPay
-
-1. Créer un compte CinetPay
-2. Récupérer l'API Key et Site ID
-3. Configurer les callbacks
-
-## 🗺️ Cartes
-
-Les cartes utilisent Leaflet.js. Le composant `MapView` est disponible dans `components/map/MapView.tsx`.
-
-## 🧪 Tests
-
-Pour tester l'application:
-
-1. Créer un compte utilisateur
-2. Créer un compte prestataire
-3. Ajouter une offre
-4. Faire une réservation de test
-
-## 📚 Ressources
-
-- [Documentation Next.js](https://nextjs.org/docs)
-- [Documentation Prisma](https://www.prisma.io/docs)
-- [Documentation Supabase](https://supabase.com/docs)
-- [Documentation shadcn/ui](https://ui.shadcn.com)
-- [Documentation Next-Intl](https://next-intl-docs.vercel.app)
-
-## 🐛 Problèmes courants
-
-### Erreur de connexion à la base de données
-
-Vérifier que:
-- `DATABASE_URL` est correct
-- La base de données Supabase est accessible
-- Les migrations Prisma sont appliquées
-
-### Erreur d'authentification Supabase
-
-Vérifier que:
-- Les clés Supabase sont correctes
-- L'URL Supabase est correcte
-- Les règles RLS (Row Level Security) sont configurées
-
-### Erreur de build
-
-```bash
-# Nettoyer et réinstaller
-rm -rf node_modules .next
-npm install
-npm run build
-```
-
-## 🆘 Support
-
-Pour toute question ou problème, créer une issue sur le repository.
-
-
+Si tout fonctionne, vous êtes prêt à développer ! 🎉

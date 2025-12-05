@@ -25,11 +25,25 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20')
     const skip = (page - 1) * limit
 
-    const where: {
-      userId: string;
+    // Si l'utilisateur est un prestataire, récupérer les réservations de ses offres
+    let where: {
+      userId?: string;
+      prestataireId?: string;
       statut?: string;
-    } = {
-      userId: user.id,
+    } = {}
+
+    if (user.role === 'PRESTATAIRE') {
+      // Récupérer le prestataire de l'utilisateur
+      const prestataire = await prisma.prestataire.findUnique({
+        where: { userId: user.id },
+      })
+      
+      if (prestataire) {
+        where.prestataireId = prestataire.id
+      }
+    } else {
+      // Pour les utilisateurs normaux, récupérer leurs propres réservations
+      where.userId = user.id
     }
 
     if (statut) {
@@ -48,6 +62,15 @@ export async function GET(request: NextRequest) {
               type: true,
               region: true,
               ville: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              nom: true,
+              prenom: true,
+              email: true,
+              telephone: true,
             },
           },
           prestataire: {
