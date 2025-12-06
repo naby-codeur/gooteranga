@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,15 +25,17 @@ import {
   CheckCircle,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { cn } from '@/lib/utils'
 
 type OffreType = 'HEBERGEMENT' | 'GUIDE' | 'ACTIVITE' | 'RESTAURANT' | 'CULTURE' | 'EVENEMENT'
 
 interface CreateOffreFormProps {
+  offreId?: string
   onSuccess?: () => void
   onCancel?: () => void
 }
 
-export function CreateOffreForm({ onSuccess, onCancel }: CreateOffreFormProps) {
+export function CreateOffreForm({ offreId, onSuccess, onCancel }: CreateOffreFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
@@ -59,8 +61,11 @@ export function CreateOffreForm({ onSuccess, onCancel }: CreateOffreFormProps) {
   const [boostDuree, setBoostDuree] = useState<'jour' | 'semaine' | 'mois'>('semaine')
 
   const MAX_IMAGES = 3
-  const MIN_VIDEO_DURATION = 30 // secondes
+  const MIN_VIDEO_DURATION = 15 // secondes
   const MAX_VIDEO_DURATION = 60 // secondes
+  
+  // Type de média : soit vidéo, soit images
+  const [mediaType, setMediaType] = useState<'video' | 'images'>('images')
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -68,6 +73,14 @@ export function CreateOffreForm({ onSuccess, onCancel }: CreateOffreFormProps) {
     if (images.length + files.length > MAX_IMAGES) {
       setError(`Maximum ${MAX_IMAGES} images autorisées`)
       return
+    }
+
+    // Si on passe en mode images, supprimer les vidéos
+    if (mediaType === 'video' && videoPreviews.length > 0) {
+      videoPreviews.forEach(preview => URL.revokeObjectURL(preview.url))
+      setVideos([])
+      setVideoPreviews([])
+      setMediaType('images')
     }
 
     const newImages = [...images, ...files]
@@ -92,26 +105,37 @@ export function CreateOffreForm({ onSuccess, onCancel }: CreateOffreFormProps) {
     const files = Array.from(e.target.files || [])
     const errors: string[] = []
 
-    for (const file of files) {
-      // Vérifier la durée de la vidéo
-      const duration = await getVideoDuration(file)
-      
-      if (duration < MIN_VIDEO_DURATION || duration > MAX_VIDEO_DURATION) {
-        errors.push(
-          `${file.name}: Durée invalide (${duration}s). La vidéo doit faire entre ${MIN_VIDEO_DURATION}s et ${MAX_VIDEO_DURATION}s`
-        )
-        continue
-      }
-
-      const url = URL.createObjectURL(file)
-      setVideos((prev) => [...prev, file])
-      setVideoPreviews((prev) => [...prev, { file, duration, url }])
+    // Si on passe en mode vidéo, supprimer les images
+    if (mediaType === 'images' && (images.length > 0 || imagePreviews.length > 0)) {
+      setImages([])
+      setImagePreviews([])
+      setMediaType('video')
     }
 
-    if (errors.length > 0) {
+    // Ne prendre que la première vidéo
+    const file = files[0]
+    if (!file) return
+
+    // Vérifier la durée de la vidéo
+    const duration = await getVideoDuration(file)
+    
+    if (duration < MIN_VIDEO_DURATION || duration > MAX_VIDEO_DURATION) {
+      errors.push(
+        `Durée invalide (${Math.round(duration)}s). La vidéo doit faire entre ${MIN_VIDEO_DURATION}s et ${MAX_VIDEO_DURATION}s`
+      )
       setVideoErrors(errors)
       setTimeout(() => setVideoErrors([]), 5000)
+      return
     }
+
+    // Supprimer l'ancienne vidéo si elle existe
+    if (videoPreviews.length > 0) {
+      videoPreviews.forEach(preview => URL.revokeObjectURL(preview.url))
+    }
+
+    const url = URL.createObjectURL(file)
+    setVideos([file])
+    setVideoPreviews([{ file, duration, url }])
   }
 
   const getVideoDuration = (file: File): Promise<number> => {
@@ -133,6 +157,53 @@ export function CreateOffreForm({ onSuccess, onCancel }: CreateOffreFormProps) {
     setVideoPreviews((prev) => prev.filter((_, i) => i !== index))
   }
 
+  // Charger les données de l'offre si on est en mode édition
+  useEffect(() => {
+    if (offreId) {
+      const loadOffre = async () => {
+        try {
+          const response = await fetch(`/api/offres/${offreId}`)
+          const data = await response.json()
+          
+          if (response.ok && data.success && data.data) {
+            const offre = data.data
+            setFormData({
+              titre: offre.titre || '',
+              description: offre.description || '',
+              type: offre.type || '',
+              region: offre.region || '',
+              ville: offre.ville || '',
+              adresse: offre.adresse || '',
+              prix: String(offre.prix || ''),
+              prixUnite: offre.prixUnite || '',
+              duree: offre.duree ? String(offre.duree) : '',
+              capacite: offre.capacite ? String(offre.capacite) : '',
+            })
+            
+            // Charger les médias existants
+            if (offre.images && offre.images.length > 0) {
+              setImagePreviews(offre.images)
+              setMediaType('images')
+            } else if (offre.videos && offre.videos.length > 0) {
+              // Pour les vidéos existantes, créer des previews fictives
+              setVideoPreviews(offre.videos.map((url: string) => ({
+                file: new File([], url),
+                duration: 0,
+                url
+              })))
+              setMediaType('video')
+            }
+          }
+        } catch (error) {
+          console.error('Error loading offre:', error)
+          setError('Erreur lors du chargement de l\'offre')
+        }
+      }
+      
+      loadOffre()
+    }
+  }, [offreId])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -144,25 +215,43 @@ export function CreateOffreForm({ onSuccess, onCancel }: CreateOffreFormProps) {
         throw new Error('Veuillez remplir tous les champs obligatoires')
       }
 
-      if (images.length > MAX_IMAGES) {
-        throw new Error(`Maximum ${MAX_IMAGES} images autorisées`)
-      }
-
-      // Vérifier les durées des vidéos
-      for (const preview of videoPreviews) {
-        if (preview.duration < MIN_VIDEO_DURATION || preview.duration > MAX_VIDEO_DURATION) {
+      // Validation : soit vidéo, soit images (pas les deux)
+      if (mediaType === 'video') {
+        if (videoPreviews.length === 0) {
+          throw new Error('Veuillez ajouter une vidéo (15-60 secondes)')
+        }
+        if (videoPreviews[0].duration < MIN_VIDEO_DURATION || videoPreviews[0].duration > MAX_VIDEO_DURATION) {
           throw new Error(
-            `La vidéo "${preview.file.name}" a une durée invalide (${preview.duration}s). Durée requise: ${MIN_VIDEO_DURATION}s-${MAX_VIDEO_DURATION}s`
+            `La vidéo a une durée invalide (${Math.round(videoPreviews[0].duration)}s). Durée requise: ${MIN_VIDEO_DURATION}s-${MAX_VIDEO_DURATION}s`
           )
+        }
+      } else {
+        if (images.length === 0 && imagePreviews.filter(url => url.startsWith('http') || url.startsWith('/')).length === 0) {
+          throw new Error('Veuillez ajouter au moins une image (maximum 3)')
+        }
+        if (images.length + imagePreviews.filter(url => url.startsWith('http') || url.startsWith('/')).length > MAX_IMAGES) {
+          throw new Error(`Maximum ${MAX_IMAGES} images autorisées`)
         }
       }
 
       // Upload des images et vidéos (à implémenter avec votre service de stockage)
       // Pour l'instant, on simule avec des URLs
-      const imageUrls: string[] = [] // TODO: Upload images
-      const videoUrls: string[] = [] // TODO: Upload videos
+      // En mode édition, conserver les médias existants
+      const existingImageUrls = imagePreviews.filter(url => url.startsWith('http') || url.startsWith('/'))
+      const imageUrls: string[] = mediaType === 'images' 
+        ? (offreId && existingImageUrls.length > 0 && images.length === 0 
+          ? existingImageUrls
+          : []) // TODO: Upload new images
+        : []
+      
+      const existingVideoUrls = videoPreviews.filter(p => p.url.startsWith('http') || p.url.startsWith('/')).map(p => p.url)
+      const videoUrls: string[] = mediaType === 'video'
+        ? (offreId && existingVideoUrls.length > 0 && videos.length === 0
+          ? existingVideoUrls
+          : []) // TODO: Upload new video
+        : []
 
-      // Créer l'offre
+      // Créer ou mettre à jour l'offre
       const offreData = {
         titre: formData.titre,
         description: formData.description,
@@ -178,8 +267,11 @@ export function CreateOffreForm({ onSuccess, onCancel }: CreateOffreFormProps) {
         capacite: formData.capacite ? parseInt(formData.capacite) : null,
       }
 
-      const response = await fetch('/api/offres', {
-        method: 'POST',
+      const url = offreId ? `/api/offres/${offreId}` : '/api/offres'
+      const method = offreId ? 'PUT' : 'POST'
+      
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(offreData),
       })
@@ -187,13 +279,13 @@ export function CreateOffreForm({ onSuccess, onCancel }: CreateOffreFormProps) {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erreur lors de la création de l\'offre')
+        throw new Error(data.error || `Erreur lors de la ${offreId ? 'modification' : 'création'} de l'offre`)
       }
 
-      const offreId = data.data.id
+      const finalOffreId = offreId || data.data.id
 
-      // Si boost activé, créer le boost
-      if (boostEnabled && offreId) {
+      // Si boost activé, créer le boost (seulement en création)
+      if (boostEnabled && !offreId && finalOffreId) {
         const boostResponse = await fetch('/api/boosts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -324,128 +416,190 @@ export function CreateOffreForm({ onSuccess, onCancel }: CreateOffreFormProps) {
         </CardContent>
       </Card>
 
-      {/* Images (max 3) */}
+      {/* Médias : Vidéo OU Images */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ImageIcon className="h-5 w-5" />
-            Images
+            Médias
           </CardTitle>
           <CardDescription>
-            Maximum {MAX_IMAGES} images ({images.length}/{MAX_IMAGES} utilisées)
+            Choisissez soit une vidéo (15-60s) soit jusqu'à 3 images
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {imagePreviews.length > 0 && (
-            <div className="grid grid-cols-3 gap-4">
-              {imagePreviews.map((preview, index) => (
-                <div key={index} className="relative group">
-                  <img
-                    src={preview}
-                    alt={`Preview ${index + 1}`}
-                    className="w-full h-32 object-cover rounded-lg"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeImage(index)}
-                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {images.length < MAX_IMAGES && (
-            <div>
-              <Label htmlFor="images">Ajouter des images</Label>
-              <Input
-                id="images"
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleImageChange}
-                className="mt-2"
-              />
-            </div>
-          )}
-
-          {images.length >= MAX_IMAGES && (
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-green-500" />
-              Limite de {MAX_IMAGES} images atteinte
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Vidéos (30s-1mn) */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Video className="h-5 w-5" />
-            Vidéos
-          </CardTitle>
-          <CardDescription>
-            Durée requise: {MIN_VIDEO_DURATION}s - {MAX_VIDEO_DURATION}s
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {videoPreviews.length > 0 && (
-            <div className="space-y-3">
-              {videoPreviews.map((preview, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-3 border rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    <Video className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{preview.file.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Durée: {preview.duration.toFixed(1)}s
-                        {preview.duration >= MIN_VIDEO_DURATION &&
-                        preview.duration <= MAX_VIDEO_DURATION ? (
-                          <Badge variant="default" className="ml-2 bg-green-500">
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Valide
-                          </Badge>
-                        ) : (
-                          <Badge variant="destructive" className="ml-2">
-                            <AlertCircle className="h-3 w-3 mr-1" />
-                            Durée invalide
-                          </Badge>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeVideo(index)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div>
-            <Label htmlFor="videos">Ajouter une vidéo</Label>
-            <Input
-              id="videos"
-              type="file"
-              accept="video/*"
-              onChange={handleVideoChange}
-              className="mt-2"
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Durée minimale: {MIN_VIDEO_DURATION}s, maximale: {MAX_VIDEO_DURATION}s
-            </p>
+          {/* Sélecteur de type de média */}
+          <div className="flex gap-4 p-1 bg-muted rounded-lg">
+            <button
+              type="button"
+              onClick={() => {
+                setMediaType('images')
+                // Supprimer les vidéos si on passe en mode images
+                if (videoPreviews.length > 0) {
+                  videoPreviews.forEach(preview => URL.revokeObjectURL(preview.url))
+                  setVideos([])
+                  setVideoPreviews([])
+                }
+              }}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md transition-all",
+                mediaType === 'images'
+                  ? "bg-background text-foreground shadow-sm font-medium"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <ImageIcon className="h-5 w-5" />
+              <span>Images (max 3)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMediaType('video')
+                // Supprimer les images si on passe en mode vidéo
+                if (images.length > 0 || imagePreviews.length > 0) {
+                  setImages([])
+                  setImagePreviews([])
+                }
+              }}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md transition-all",
+                mediaType === 'video'
+                  ? "bg-background text-foreground shadow-sm font-medium"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Video className="h-5 w-5" />
+              <span>Vidéo (15-60s)</span>
+            </button>
           </div>
+
+          {/* Section Images */}
+          {mediaType === 'images' && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-4"
+            >
+              {imagePreviews.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {imagePreviews.map((preview, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={preview}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-32 sm:h-40 object-cover rounded-lg border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {imagePreviews.length < MAX_IMAGES && (
+                <div>
+                  <Label htmlFor="images">Ajouter des images ({imagePreviews.length}/{MAX_IMAGES})</Label>
+                  <Input
+                    id="images"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageChange}
+                    className="mt-2"
+                  />
+                </div>
+              )}
+
+              {imagePreviews.length >= MAX_IMAGES && (
+                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  Limite de {MAX_IMAGES} images atteinte
+                </p>
+              )}
+            </motion.div>
+          )}
+
+          {/* Section Vidéo */}
+          {mediaType === 'video' && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-4"
+            >
+              {videoPreviews.length > 0 && (
+                <div className="space-y-3">
+                  {videoPreviews.map((preview, index) => (
+                    <div
+                      key={index}
+                      className="relative border rounded-lg overflow-hidden bg-muted/50"
+                    >
+                      <video
+                        src={preview.url}
+                        className="w-full h-48 sm:h-64 object-cover"
+                        controls
+                        loop
+                        muted
+                      />
+                      <div className="p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Video className="h-5 w-5 text-muted-foreground" />
+                          <div>
+                            <p className="font-medium">{preview.file.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              Durée: {Math.round(preview.duration)}s
+                              {preview.duration >= MIN_VIDEO_DURATION &&
+                              preview.duration <= MAX_VIDEO_DURATION ? (
+                                <Badge variant="default" className="ml-2 bg-green-500">
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Valide
+                                </Badge>
+                              ) : (
+                                <Badge variant="destructive" className="ml-2">
+                                  <AlertCircle className="h-3 w-3 mr-1" />
+                                  Durée invalide
+                                </Badge>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeVideo(index)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {videoPreviews.length === 0 && (
+                <div>
+                  <Label htmlFor="videos">Ajouter une vidéo</Label>
+                  <Input
+                    id="videos"
+                    type="file"
+                    accept="video/*"
+                    onChange={handleVideoChange}
+                    className="mt-2"
+                  />
+                  <p className="text-sm text-muted-foreground mt-2 flex items-center gap-2">
+                    <Video className="h-4 w-4" />
+                    Durée requise: {MIN_VIDEO_DURATION}s - {MAX_VIDEO_DURATION}s (lecture en boucle)
+                  </p>
+                </div>
+              )}
+            </motion.div>
+          )}
         </CardContent>
       </Card>
 
@@ -530,10 +684,10 @@ export function CreateOffreForm({ onSuccess, onCancel }: CreateOffreFormProps) {
           {isLoading ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Création...
+              {offreId ? 'Modification...' : 'Création...'}
             </>
           ) : (
-            'Créer l\'offre'
+            offreId ? 'Modifier l\'offre' : 'Créer l\'offre'
           )}
         </Button>
       </div>

@@ -27,6 +27,19 @@ export async function GET(
   try {
     const { id } = await params
 
+    // Vérifier si c'est une offre fictive (commence par 'mock-')
+    if (id.startsWith('mock-')) {
+      // Importer le store des offres fictives depuis route.ts
+      // Pour simplifier, on va créer les offres fictives ici aussi
+      const mockOffres = await getMockOffres()
+      const mockOffre = mockOffres.find((o: { id: string }) => o.id === id)
+      
+      if (mockOffre) {
+        return successResponse(mockOffre)
+      }
+      return errorResponse('Offre non trouvée', 404)
+    }
+
     const offre = await prisma.offre.findUnique({
       where: { id },
       include: {
@@ -76,15 +89,65 @@ export async function GET(
     }
 
     // Incrémenter le compteur de vues
-    await prisma.offre.update({
-      where: { id },
-      data: { vues: { increment: 1 } },
-    })
+    try {
+      await prisma.offre.update({
+        where: { id },
+        data: { vues: { increment: 1 } },
+      })
+    } catch {
+      // Ignorer l'erreur si l'offre n'existe pas en base
+    }
 
     return successResponse(offre)
   } catch (error) {
     return handleApiError(error)
   }
+}
+
+// Fonction helper pour récupérer les offres fictives
+async function getMockOffres() {
+  const allOffres = await prisma.offre.findMany()
+  if (allOffres.length === 0) {
+    return [
+      {
+        id: 'mock-1',
+        titre: 'Tour guidé de Dakar',
+        description: 'Découvrez les merveilles de Dakar avec un guide local expérimenté. Visitez les monuments historiques, les marchés colorés et les plages magnifiques.',
+        type: 'GUIDE',
+        region: 'Dakar',
+        ville: 'Dakar',
+        adresse: 'Place de l\'Indépendance',
+        prix: 15000,
+        prixUnite: 'personne',
+        images: ['/images/ba1.png', '/images/ba2.png'],
+        videos: [],
+        duree: 4,
+        capacite: 10,
+        rating: 4.5,
+        isActive: true,
+        isFeatured: true,
+        tags: ['CULTURE', 'HISTOIRE'],
+        prestataire: {
+          id: 'prest-1',
+          nomEntreprise: 'Dakar Tours',
+          logo: null,
+          isVerified: true,
+          rating: 4.8,
+        },
+        vuesVideo: 1250,
+        nombreLikes: 45,
+        _count: {
+          avis: 23,
+          reservations: 12,
+          likes: 45,
+          favoris: 18,
+        },
+        createdAt: new Date().toISOString(),
+      },
+      // ... autres offres fictives
+    ]
+  }
+  return []
 }
 
 /**
@@ -98,6 +161,13 @@ export async function PUT(
   try {
     const { id } = await params
     const user = await requireRole('PRESTATAIRE', request)
+
+    // Si c'est une offre fictive, accepter la modification
+    if (id.startsWith('mock-')) {
+      const body = await request.json()
+      // Retourner les données mises à jour
+      return successResponse({ id, ...body }, 'Offre mise à jour avec succès')
+    }
 
     const offre = await prisma.offre.findUnique({
       where: { id },
@@ -184,6 +254,11 @@ export async function DELETE(
   try {
     const { id } = await params
     const user = await requireRole('PRESTATAIRE', request)
+
+    // Si c'est une offre fictive, accepter la suppression
+    if (id.startsWith('mock-')) {
+      return successResponse(null, 'Offre supprimée avec succès')
+    }
 
     const offre = await prisma.offre.findUnique({
       where: { id },

@@ -63,6 +63,8 @@ interface UseOffresReturn {
     totalPages: number
   }
   refetch: () => Promise<void>
+  updateOffre: (id: string, data: Partial<Offre>) => Promise<boolean>
+  deleteOffre: (id: string) => Promise<boolean>
 }
 
 export function useOffres(filters: OffresFilters = {}): UseOffresReturn {
@@ -143,12 +145,72 @@ export function useOffres(filters: OffresFilters = {}): UseOffresReturn {
     fetchOffres()
   }, [fetchOffres])
 
+  // Fonction pour mettre à jour une offre
+  const updateOffre = useCallback(async (id: string, data: Partial<Offre>): Promise<boolean> => {
+    try {
+      // Si c'est une offre fictive, mettre à jour localement
+      if (id.startsWith('mock-')) {
+        setOffres(prev => prev.map(o => 
+          o.id === id ? { ...o, ...data } : o
+        ))
+        return true
+      }
+
+      // Sinon, utiliser l'API
+      const response = await fetch(`/api/offres/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+
+      const result = await response.json()
+      
+      if (response.ok && result.success) {
+        await fetchOffres()
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error('Error updating offre:', error)
+      return false
+    }
+  }, [fetchOffres])
+
+  // Fonction pour supprimer une offre
+  const deleteOffre = useCallback(async (id: string): Promise<boolean> => {
+    try {
+      // Si c'est une offre fictive, supprimer localement
+      if (id.startsWith('mock-')) {
+        setOffres(prev => prev.filter(o => o.id !== id))
+        return true
+      }
+
+      // Sinon, utiliser l'API
+      const response = await fetch(`/api/offres/${id}`, {
+        method: 'DELETE',
+      })
+
+      const result = await response.json()
+      
+      if (response.ok && result.success) {
+        await fetchOffres()
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error('Error deleting offre:', error)
+      return false
+    }
+  }, [fetchOffres])
+
   return {
     offres,
     loading,
     error,
     pagination,
     refetch: fetchOffres,
+    updateOffre,
+    deleteOffre,
   }
 }
 

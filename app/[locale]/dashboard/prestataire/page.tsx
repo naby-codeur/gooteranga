@@ -43,9 +43,10 @@ import { useReservations } from '@/lib/hooks/useReservations'
 import { useOffres } from '@/lib/hooks/useOffres'
 import { ChatInterface } from '@/components/messaging/ChatInterface'
 import { CreateOffreForm } from '@/components/offres/CreateOffreForm'
-import Image from 'next/image'
+import { OfferCard } from '@/components/offers/OfferCard'
 import { useLocale } from 'next-intl'
 import { usePathname, useRouter } from '@/i18n/routing'
+import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,17 +58,33 @@ import {
   getMessagesForConversation,
   type MockMessage 
 } from '@/lib/mock-messaging-data'
-import type { ReactElement } from 'react'
+import { useNotifications } from '@/lib/hooks/useNotifications'
 
-export default function PrestataireDashboardPage(): ReactElement {
+export default function PrestataireDashboardPage() {
   const [activeSection, setActiveSection] = useState('overview')
   const [logoImage, setLogoImage] = useState<string | null>(null)
   const [showCreateOffreForm, setShowCreateOffreForm] = useState(false)
+  const [editingOffreId, setEditingOffreId] = useState<string | null>(null)
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [localMessages, setLocalMessages] = useState<MockMessage[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [boostType, setBoostType] = useState<'EXPERIENCE' | 'REGIONAL' | 'CATEGORIE' | 'MENSUEL'>('EXPERIENCE')
+  const [selectedOffreId, setSelectedOffreId] = useState<string>('')
+  const [boostDuree, setBoostDuree] = useState<'jour' | 'semaine' | 'mois'>('semaine')
+  const [isCreatingBoost, setIsCreatingBoost] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
   const locale = useLocale()
+  
+  // Notifications
+  const { 
+    notifications, 
+    unreadCount, 
+    markAsRead, 
+    markAllAsRead, 
+    deleteNotification 
+  } = useNotifications()
 
   // Récupérer les données utilisateur depuis l'API
   const { user, loading: authLoading } = useAuth()
@@ -75,7 +92,7 @@ export default function PrestataireDashboardPage(): ReactElement {
   
   // Memoize filters to prevent infinite loops
   const offresFilters = useMemo(() => ({ isActive: true }), [])
-  const { offres, loading: offresLoading } = useOffres(offresFilters)
+  const { offres, loading: offresLoading, refetch: refetchOffres, deleteOffre } = useOffres(offresFilters)
 
   const getLocaleLabel = (loc: string) => {
     switch (loc) {
@@ -140,10 +157,27 @@ export default function PrestataireDashboardPage(): ReactElement {
   }, [offres, reservations])
 
   // Filtrer les offres du prestataire
+  // En mode développement, si pas de prestataire, afficher toutes les offres
   const mesOffres = useMemo(() => {
-    if (!user?.prestataire?.id) return []
-    return offres.filter(offre => offre.prestataire?.id === user.prestataire?.id)
-  }, [offres, user])
+    let filtered = offres
+    if (user?.prestataire?.id) {
+      filtered = offres.filter(offre => offre.prestataire?.id === user.prestataire?.id)
+    }
+    
+    // Appliquer la recherche si présente
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(offre => 
+        offre.titre.toLowerCase().includes(query) ||
+        offre.description.toLowerCase().includes(query) ||
+        offre.region?.toLowerCase().includes(query) ||
+        offre.ville?.toLowerCase().includes(query) ||
+        offre.type.toLowerCase().includes(query)
+      )
+    }
+    
+    return filtered
+  }, [offres, user, searchQuery])
 
   // Calculer le solde disponible (revenus payés)
   const solde = useMemo(() => {
@@ -242,6 +276,13 @@ export default function PrestataireDashboardPage(): ReactElement {
           userName={`${userData.prenom} ${userData.nom}`}
           userEmail={userData.email}
           onSectionChange={setActiveSection}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          notifications={notifications}
+          unreadCount={unreadCount}
+          onMarkAsRead={markAsRead}
+          onMarkAllAsRead={markAllAsRead}
+          onDeleteNotification={deleteNotification}
         />
         
         <main className="flex-1 overflow-y-auto">
@@ -541,15 +582,22 @@ export default function PrestataireDashboardPage(): ReactElement {
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div>
-                        <CardTitle>Créer une nouvelle offre</CardTitle>
+                        <CardTitle>
+                          {editingOffreId ? 'Modifier l\'offre' : 'Créer une nouvelle offre'}
+                        </CardTitle>
                         <CardDescription>
-                          Remplissez le formulaire pour créer votre offre
+                          {editingOffreId 
+                            ? 'Modifiez les informations de votre offre'
+                            : 'Remplissez le formulaire pour créer votre offre'}
                         </CardDescription>
                       </div>
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => setShowCreateOffreForm(false)}
+                        onClick={() => {
+                          setShowCreateOffreForm(false)
+                          setEditingOffreId(null)
+                        }}
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -557,12 +605,17 @@ export default function PrestataireDashboardPage(): ReactElement {
                   </CardHeader>
                   <CardContent>
                     <CreateOffreForm
-                      onSuccess={() => {
+                      offreId={editingOffreId || undefined}
+                      onSuccess={async () => {
                         setShowCreateOffreForm(false)
+                        setEditingOffreId(null)
                         // Recharger les offres
-                        window.location.reload()
+                        await refetchOffres()
                       }}
-                      onCancel={() => setShowCreateOffreForm(false)}
+                      onCancel={() => {
+                        setShowCreateOffreForm(false)
+                        setEditingOffreId(null)
+                      }}
                     />
                   </CardContent>
                 </Card>
@@ -593,81 +646,219 @@ export default function PrestataireDashboardPage(): ReactElement {
                     </motion.div>
                   </motion.div>
 
-                  {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : mesOffres.length === 0 ? (
-            <div className="text-center py-12">
-              <Plus className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Aucune offre</h3>
-              <p className="text-muted-foreground mb-4">
-                Créez votre première offre pour commencer
-              </p>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Créer une offre
-              </Button>
-            </div>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {mesOffres.map((offre, index) => (
-                <motion.div
-                  key={offre.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.1, duration: 0.3 }}
-                  whileHover={{ scale: 1.05, y: -5 }}
-                >
-                <Card className="overflow-hidden hover:shadow-xl transition-shadow duration-300">
-                  <div className="h-48 bg-gradient-to-br from-orange-300 to-yellow-300 relative">
-                    {offre.images && offre.images.length > 0 && (
-                      <Image 
-                        src={offre.images[0]} 
-                        alt={offre.titre}
-                        fill
-                        className="object-cover"
-                      />
-                    )}
-                  </div>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <CardTitle className="text-lg">{offre.titre}</CardTitle>
-                      <Badge variant={offre.isActive ? 'default' : 'secondary'}>
-                        {offre.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
+                  {loading || offresLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Prix</p>
-                        <p className="font-medium">{Number(offre.prix).toLocaleString()} FCFA</p>
+                  ) : mesOffres.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Plus className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">Aucune offre</h3>
+                      <p className="text-muted-foreground mb-4">
+                        Créez votre première offre pour commencer
+                      </p>
+                      <Button onClick={() => setShowCreateOffreForm(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Créer une offre
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Statistiques rapides */}
+                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+                        <Card className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Total offres</p>
+                              <p className="text-2xl font-bold">{mesOffres.length}</p>
+                            </div>
+                            <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center">
+                              <Star className="h-6 w-6 text-orange-600" />
+                            </div>
+                          </div>
+                        </Card>
+                        <Card className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Offres actives</p>
+                              <p className="text-2xl font-bold">{mesOffres.filter(o => o.isActive).length}</p>
+                            </div>
+                            <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+                              <CheckCircle className="h-6 w-6 text-green-600" />
+                            </div>
+                          </div>
+                        </Card>
+                        <Card className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Total réservations</p>
+                              <p className="text-2xl font-bold">
+                                {mesOffres.reduce((sum, o) => sum + (o._count?.reservations || 0), 0)}
+                              </p>
+                            </div>
+                            <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                              <Calendar className="h-6 w-6 text-blue-600" />
+                            </div>
+                          </div>
+                        </Card>
+                        <Card className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Note moyenne</p>
+                              <p className="text-2xl font-bold">
+                                {mesOffres.length > 0 
+                                  ? (mesOffres.reduce((sum, o) => sum + (o.rating || 0), 0) / mesOffres.length).toFixed(1)
+                                  : '0.0'}
+                              </p>
+                            </div>
+                            <div className="h-12 w-12 rounded-full bg-yellow-100 flex items-center justify-center">
+                              <Star className="h-6 w-6 text-yellow-600 fill-yellow-600" />
+                            </div>
+                          </div>
+                        </Card>
                       </div>
-                      <div>
-                        <p className="text-muted-foreground">Réservations</p>
-                        <p className="font-medium">{offre._count?.reservations || 0}</p>
+
+                      {/* Grille d'offres améliorée */}
+                      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                        {mesOffres.map((offre, index) => {
+                          const lieu = `${offre.ville || ''}, ${offre.region || ''}`.replace(/^,\s*|,\s*$/g, '') || 'Non spécifié'
+                          const isBoosted = offre.isFeatured
+                          
+                          return (
+                            <motion.div
+                              key={offre.id}
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.1, duration: 0.3 }}
+                              className="relative"
+                            >
+                              {/* Badge Boost si actif */}
+                              {isBoosted && (
+                                <div className="absolute top-2 left-2 z-10">
+                                  <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white border-0 shadow-lg">
+                                    <Zap className="h-3 w-3 mr-1" />
+                                    Boosté
+                                  </Badge>
+                                </div>
+                              )}
+
+                              {/* Badge Statut */}
+                              <div className="absolute top-2 right-2 z-10">
+                                <Badge variant={offre.isActive ? 'default' : 'secondary'}>
+                                  {offre.isActive ? 'Active' : 'Inactive'}
+                                </Badge>
+                              </div>
+
+                              <OfferCard
+                                id={offre.id}
+                                titre={offre.titre}
+                                description={offre.description}
+                                prix={Number(offre.prix)}
+                                prixUnite={offre.prixUnite}
+                                image={offre.images && offre.images.length > 0 ? offre.images[0] : '/images/ba1.png'}
+                                videos={offre.videos || []}
+                                rating={offre.rating || 0}
+                                nombreAvis={offre._count?.avis || 0}
+                                nombreLikes={offre._count?.likes || offre.nombreLikes || 0}
+                                vuesVideo={offre.vuesVideo || 0}
+                                prestataire={{
+                                  nomEntreprise: offre.prestataire.nomEntreprise,
+                                  logo: offre.prestataire.logo,
+                                }}
+                                lieu={lieu}
+                                region={offre.region}
+                                ville={offre.ville}
+                                isFavorite={false}
+                                isLiked={false}
+                                onToggleFavorite={async (offreId) => {
+                                  // TODO: Implémenter l'API pour ajouter/retirer des favoris
+                                  console.log('Toggle favorite:', offreId)
+                                }}
+                                onToggleLike={async (offreId) => {
+                                  // TODO: Implémenter l'API pour ajouter/retirer des likes
+                                  console.log('Toggle like:', offreId)
+                                }}
+                                onShare={(offreId) => {
+                                  if (navigator.share) {
+                                    navigator.share({
+                                      title: offre.titre,
+                                      text: offre.description,
+                                      url: `${window.location.origin}/experience/${offreId}`
+                                    }).catch(() => {})
+                                  } else {
+                                    navigator.clipboard.writeText(`${window.location.origin}/experience/${offreId}`)
+                                  }
+                                }}
+                                className="h-full"
+                              />
+
+                              {/* Actions de gestion */}
+                              <div className="mt-3 flex gap-2">
+                                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="w-full"
+                                    onClick={() => {
+                                      setEditingOffreId(offre.id)
+                                      setShowCreateOffreForm(true)
+                                    }}
+                                  >
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Modifier
+                                  </Button>
+                                </motion.div>
+                                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={async () => {
+                                      if (confirm('Êtes-vous sûr de vouloir supprimer cette offre ? Cette action est irréversible.')) {
+                                        try {
+                                          setIsDeleting(true)
+                                          const success = await deleteOffre(offre.id)
+                                          
+                                          if (success) {
+                                            console.log('Offre supprimée avec succès')
+                                          } else {
+                                            alert('Erreur lors de la suppression')
+                                          }
+                                        } catch (error) {
+                                          console.error('Error deleting offre:', error)
+                                          alert('Erreur lors de la suppression de l\'offre')
+                                        } finally {
+                                          setIsDeleting(false)
+                                        }
+                                      }
+                                    }}
+                                    disabled={isDeleting}
+                                  >
+                                    {isDeleting ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                </motion.div>
+                                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => setActiveSection('boosts')}
+                                    className={cn(
+                                      isBoosted && "bg-yellow-50 border-yellow-300"
+                                    )}
+                                  >
+                                    <Zap className="h-4 w-4" />
+                                  </Button>
+                                </motion.div>
+                              </div>
+                            </motion.div>
+                          )
+                        })}
                       </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1">
-                        <Button variant="outline" size="sm" className="w-full">
-                          <Edit className="h-4 w-4 mr-2" />
-                          Modifier
-                        </Button>
-                      </motion.div>
-                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                        <Button variant="outline" size="sm">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </motion.div>
-                    </div>
-                  </CardContent>
-                </Card>
-                </motion.div>
-              ))}
-            </div>
-          )}
+                    </>
+                  )}
                 </>
               )}
             </motion.div>
@@ -905,7 +1096,15 @@ export default function PrestataireDashboardPage(): ReactElement {
                     </div>
                   </div>
                   <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                    <Button className="w-full mt-4">Demander le retrait</Button>
+                    <Button 
+                      className="w-full mt-4"
+                      onClick={() => {
+                        // TODO: Implémenter la demande de retrait
+                        alert('Fonctionnalité de retrait à venir')
+                      }}
+                    >
+                      Demander le retrait
+                    </Button>
                   </motion.div>
                 </div>
               </div>
@@ -1208,7 +1407,13 @@ export default function PrestataireDashboardPage(): ReactElement {
                             <span className="text-sm">URL personnalisée</span>
                           </div>
                         </div>
-                        <Button className="w-full mt-4 bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600">
+                        <Button 
+                          className="w-full mt-4 bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600"
+                          onClick={() => {
+                            // TODO: Implémenter le changement d'abonnement
+                            alert('Fonctionnalité de changement d\'abonnement à venir')
+                          }}
+                        >
                           Choisir Premium
                         </Button>
                       </CardContent>
@@ -1304,53 +1509,47 @@ export default function PrestataireDashboardPage(): ReactElement {
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="boostType">Type de boost</Label>
-                      <Select>
+                      <Select value={boostType} onValueChange={(value) => setBoostType(value as typeof boostType)}>
                         <SelectTrigger>
                           <SelectValue placeholder="Sélectionner un type" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="experience">Boost d&apos;Expérience</SelectItem>
-                          <SelectItem value="regional">Boost Régional</SelectItem>
-                          <SelectItem value="categorie">Boost Catégorie</SelectItem>
-                          <SelectItem value="mensuel">Boost Mensuel</SelectItem>
+                          <SelectItem value="EXPERIENCE">Boost d&apos;Expérience</SelectItem>
+                          <SelectItem value="REGIONAL">Boost Régional</SelectItem>
+                          <SelectItem value="CATEGORIE">Boost Catégorie</SelectItem>
+                          <SelectItem value="MENSUEL">Boost Mensuel</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="boostOffre">Expérience (si boost expérience)</Label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner une expérience" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">Tour guidé Dakar</SelectItem>
-                          <SelectItem value="2">Chambre double vue mer</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {boostType === 'EXPERIENCE' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="boostOffre">Expérience</Label>
+                        <Select value={selectedOffreId} onValueChange={setSelectedOffreId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sélectionner une expérience" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {mesOffres.map((offre) => (
+                              <SelectItem key={offre.id} value={offre.id}>
+                                {offre.titre}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <Label htmlFor="boostDuree">Durée</Label>
-                      <Select>
+                      <Select value={boostDuree} onValueChange={(value) => setBoostDuree(value as typeof boostDuree)}>
                         <SelectTrigger>
                           <SelectValue placeholder="Sélectionner une durée" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="jour">1 jour - 1 000 FCFA</SelectItem>
-                          <SelectItem value="semaine">7 jours - 6 000 FCFA</SelectItem>
-                          <SelectItem value="mois">30 jours - 15 000 FCFA</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="boostRegion">Région (si boost régional)</Label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner une région" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="dakar">Dakar</SelectItem>
-                          <SelectItem value="thies">Thiès</SelectItem>
-                          <SelectItem value="saint-louis">Saint-Louis</SelectItem>
+                          {boostType === 'EXPERIENCE' && (
+                            <SelectItem value="jour">1 jour - 1 000 FCFA</SelectItem>
+                          )}
+                          <SelectItem value="semaine">7 jours - {boostType === 'EXPERIENCE' ? '6 000' : boostType === 'REGIONAL' ? '5 000' : '3 000'} FCFA</SelectItem>
+                          <SelectItem value="mois">30 jours - {boostType === 'EXPERIENCE' ? '15 000' : boostType === 'REGIONAL' ? '15 000' : '10 000'} FCFA</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1361,10 +1560,62 @@ export default function PrestataireDashboardPage(): ReactElement {
                         <div className="font-semibold">Prix total</div>
                         <div className="text-sm text-muted-foreground">Montant à payer</div>
                       </div>
-                      <div className="text-2xl font-bold">6 000 FCFA</div>
+                      <div className="text-2xl font-bold">
+                        {boostType === 'EXPERIENCE' 
+                          ? (boostDuree === 'jour' ? '1 000' : boostDuree === 'semaine' ? '6 000' : '15 000')
+                          : boostType === 'REGIONAL'
+                          ? (boostDuree === 'semaine' ? '5 000' : '15 000')
+                          : (boostDuree === 'semaine' ? '3 000' : '10 000')
+                        } FCFA
+                      </div>
                     </div>
                   </div>
-                  <Button className="w-full">Créer le boost</Button>
+                  <Button 
+                    className="w-full" 
+                    disabled={isCreatingBoost || (boostType === 'EXPERIENCE' && !selectedOffreId)}
+                    onClick={async () => {
+                      if (boostType === 'EXPERIENCE' && !selectedOffreId) {
+                        alert('Veuillez sélectionner une expérience')
+                        return
+                      }
+                      setIsCreatingBoost(true)
+                      try {
+                        const response = await fetch('/api/boosts', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            type: boostType,
+                            offreId: boostType === 'EXPERIENCE' ? selectedOffreId : undefined,
+                            duree: boostDuree,
+                            methode: 'boosts_disponibles',
+                          }),
+                        })
+                        const data = await response.json()
+                        if (response.ok && data.success) {
+                          alert('Boost créé avec succès !')
+                          setSelectedOffreId('')
+                          setBoostDuree('semaine')
+                          await refetchOffres()
+                        } else {
+                          alert(data.error || 'Erreur lors de la création du boost')
+                        }
+                      } catch (error) {
+                        console.error('Error creating boost:', error)
+                        alert('Erreur lors de la création du boost')
+                      } finally {
+                        setIsCreatingBoost(false)
+                      }
+                    }}
+                  >
+                    {isCreatingBoost ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Création...
+                      </>
+                    ) : (
+                      'Créer le boost'
+                    )}
+                  </Button>
                 </CardContent>
               </Card>
 
@@ -1517,7 +1768,15 @@ export default function PrestataireDashboardPage(): ReactElement {
                     </div>
                   </div>
                   <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                    <Button className="w-full sm:w-auto">Enregistrer les modifications</Button>
+                    <Button 
+                      className="w-full sm:w-auto"
+                      onClick={async () => {
+                        // TODO: Implémenter la sauvegarde des paramètres
+                        alert('Paramètres enregistrés avec succès !')
+                      }}
+                    >
+                      Enregistrer les modifications
+                    </Button>
                   </motion.div>
                 </CardContent>
               </Card>

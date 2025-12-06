@@ -1,4 +1,5 @@
 // Authentification désactivée pour le développement - accès direct avec données fictives
+import React from 'react'
 
 export default async function AdminLayout({
   children,
