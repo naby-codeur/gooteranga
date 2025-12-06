@@ -71,6 +71,14 @@ type MockPrismaClient = {
     upsert: (args: unknown) => Promise<unknown>
     delete: (args: unknown) => Promise<unknown>
   },
+  depense: {
+    findUnique: (args: unknown) => Promise<unknown>
+    findMany: (args?: unknown) => Promise<unknown[]>
+    count: (args?: unknown) => Promise<number>
+    create: (args: unknown) => Promise<unknown>
+    update: (args: unknown) => Promise<unknown>
+    delete: (args: unknown) => Promise<unknown>
+  },
   $disconnect: () => Promise<void>
 }
 
@@ -203,6 +211,35 @@ const mockPrismaClient: MockPrismaClient = {
     count: async () => 0,
     create: async () => ({}),
     upsert: async () => ({}),
+    delete: async () => ({}),
+  },
+  depense: {
+    findUnique: async () => null,
+    findMany: async () => [],
+    count: async () => 0,
+    create: async (args: unknown) => {
+      if (!args || typeof args !== 'object' || !('data' in args)) {
+        return {}
+      }
+      const data = args.data as Record<string, unknown>
+      return {
+        id: 'mock-depense-id',
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+    },
+    update: async (args: unknown) => {
+      if (!args || typeof args !== 'object' || !('data' in args)) {
+        return {}
+      }
+      const data = args.data as Record<string, unknown>
+      return {
+        id: 'mock-depense-id',
+        ...data,
+        updatedAt: new Date(),
+      }
+    },
     delete: async () => ({}),
   },
   $disconnect: async () => {},

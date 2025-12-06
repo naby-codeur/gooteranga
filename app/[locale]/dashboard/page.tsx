@@ -20,7 +20,13 @@ import {
   TrendingDown,
   Receipt,
   Filter,
-  Loader2
+  Loader2,
+  Plus,
+  Trash2,
+  Search,
+  X,
+  Bell,
+  Check
 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -28,15 +34,16 @@ import { useAuth } from '@/lib/hooks/useAuth'
 import { useReservations } from '@/lib/hooks/useReservations'
 import { useFavoris } from '@/lib/hooks/useFavoris'
 import { useDepenses } from '@/lib/hooks/useDepenses'
+import { useNotifications } from '@/lib/hooks/useNotifications'
 import { ChatInterface } from '@/components/messaging/ChatInterface'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Trash2 } from 'lucide-react'
 import { useLocale } from 'next-intl'
 import { usePathname, useRouter } from '@/i18n/routing'
+import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -243,6 +250,8 @@ export default function DashboardPage() {
   const [profileImage, setProfileImage] = useState<string | null>(null)
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
   const [localMessages, setLocalMessages] = useState<MockMessage[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchFilter, setSearchFilter] = useState<'all' | 'reservations' | 'favoris' | 'depenses' | 'messages'>('all')
   const pathname = usePathname()
   const router = useRouter()
   const locale = useLocale()
@@ -252,6 +261,14 @@ export default function DashboardPage() {
   const { reservations, loading: reservationsLoading } = useReservations()
   const { favoris, loading: favorisLoading, removeFavori } = useFavoris()
   const { depenses: depensesManuelles, loading: depensesLoading, addDepense, deleteDepense } = useDepenses()
+  const { 
+    notifications, 
+    unreadCount, 
+    loading: notificationsLoading, 
+    markAsRead, 
+    markAllAsRead, 
+    deleteNotification 
+  } = useNotifications()
   const [showAddDepenseDialog, setShowAddDepenseDialog] = useState(false)
 
   const getLocaleLabel = (loc: string) => {
@@ -366,7 +383,7 @@ export default function DashboardPage() {
     )
   }, [selectedConversationId, conversations, user?.id])
 
-  const handleSendMessage = (content: string, conversationId: string) => {
+  const handleSendMessage = (content: string, conversationId: string, audioBlob?: Blob, duration?: number, attachments?: File[]) => {
     const conversation = conversations.find(c => c.id === conversationId)
     if (!conversation) return
 
@@ -378,6 +395,16 @@ export default function DashboardPage() {
       timestamp: new Date(),
       isRead: false,
       isFromUser: true,
+      isVoiceMessage: !!audioBlob,
+      voiceUrl: audioBlob ? URL.createObjectURL(audioBlob) : undefined,
+      voiceDuration: duration,
+      attachments: attachments?.map((file, index) => ({
+        id: `att-${Date.now()}-${index}`,
+        name: file.name,
+        url: file.type.startsWith('image/') ? URL.createObjectURL(file) : '#',
+        type: file.type.startsWith('image/') ? 'image' as const : 'file' as const,
+        size: file.size,
+      })),
     }
 
     setLocalMessages(prev => [...prev, newMessage])
@@ -394,7 +421,120 @@ export default function DashboardPage() {
     )
   }, [messages, localMessages])
 
-  const loading = authLoading || reservationsLoading || favorisLoading || depensesLoading
+  // Fonction de recherche
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return null
+
+    const query = searchQuery.toLowerCase().trim()
+    const results = {
+      reservations: [] as typeof reservations,
+      favoris: [] as typeof favoris,
+      depenses: [] as typeof depenses,
+      messages: [] as typeof allMessages,
+    }
+
+    // Recherche dans les réservations
+    if (searchFilter === 'all' || searchFilter === 'reservations') {
+      results.reservations = reservations.filter(r => 
+        r.offre.titre.toLowerCase().includes(query) ||
+        r.offre.ville.toLowerCase().includes(query) ||
+        r.offre.region.toLowerCase().includes(query) ||
+        r.prestataire.nomEntreprise.toLowerCase().includes(query) ||
+        r.statut.toLowerCase().includes(query) ||
+        r.notes?.toLowerCase().includes(query) ||
+        r.montant.toString().includes(query)
+      )
+    }
+
+    // Recherche dans les favoris
+    if (searchFilter === 'all' || searchFilter === 'favoris') {
+      results.favoris = favoris.filter(f => 
+        f.offre.titre.toLowerCase().includes(query) ||
+        f.offre.description.toLowerCase().includes(query) ||
+        f.offre.ville.toLowerCase().includes(query) ||
+        f.offre.region.toLowerCase().includes(query) ||
+        f.offre.prestataire.nomEntreprise.toLowerCase().includes(query) ||
+        f.offre.type.toLowerCase().includes(query)
+      )
+    }
+
+    // Recherche dans les dépenses
+    if (searchFilter === 'all' || searchFilter === 'depenses') {
+      results.depenses = depenses.filter(d => 
+        d.titre.toLowerCase().includes(query) ||
+        d.type.toLowerCase().includes(query) ||
+        d.description?.toLowerCase().includes(query) ||
+        d.lieu?.toLowerCase().includes(query) ||
+        d.methode.toLowerCase().includes(query) ||
+        d.montant.toString().includes(query) ||
+        new Date(d.date).toLocaleDateString('fr-FR').toLowerCase().includes(query)
+      )
+    }
+
+    // Recherche dans les messages
+    if (searchFilter === 'all' || searchFilter === 'messages') {
+      type MessageWithConversation = MockMessage & { conversationName?: string; conversationId?: string }
+      
+      const allConversations: MessageWithConversation[] = conversations.flatMap(conv => {
+        const convMessages = getMessagesForConversation(
+          conv.id,
+          user?.id || 'touriste-current',
+          conv.user.id,
+          conv.name
+        )
+        return convMessages.map(msg => ({ ...msg, conversationName: conv.name, conversationId: conv.id }))
+      })
+      
+      const allMessagesWithConversation: MessageWithConversation[] = [
+        ...allConversations, 
+        ...localMessages.map(msg => ({ ...msg, conversationName: 'Vous', conversationId: selectedConversationId || '' }))
+      ]
+      
+      results.messages = allMessagesWithConversation.filter(msg => 
+        msg.content.toLowerCase().includes(query) ||
+        msg.senderName.toLowerCase().includes(query) ||
+        msg.conversationName?.toLowerCase().includes(query)
+      )
+    }
+
+    const totalResults = results.reservations.length + results.favoris.length + results.depenses.length + results.messages.length
+
+    return totalResults > 0 ? results : null
+  }, [searchQuery, searchFilter, reservations, favoris, depenses, conversations, localMessages, selectedConversationId, user?.id])
+
+  const loading = authLoading || reservationsLoading || favorisLoading || depensesLoading || notificationsLoading
+
+  // Fonction pour formater le temps écoulé
+  function getTimeAgo(date: Date): string {
+    const now = new Date()
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+    
+    if (diffInSeconds < 60) {
+      return 'À l\'instant'
+    }
+    
+    const diffInMinutes = Math.floor(diffInSeconds / 60)
+    if (diffInMinutes < 60) {
+      return `Il y a ${diffInMinutes} min${diffInMinutes > 1 ? 's' : ''}`
+    }
+    
+    const diffInHours = Math.floor(diffInMinutes / 60)
+    if (diffInHours < 24) {
+      return `Il y a ${diffInHours} heure${diffInHours > 1 ? 's' : ''}`
+    }
+    
+    const diffInDays = Math.floor(diffInHours / 24)
+    if (diffInDays < 7) {
+      return `Il y a ${diffInDays} jour${diffInDays > 1 ? 's' : ''}`
+    }
+    
+    const diffInWeeks = Math.floor(diffInDays / 7)
+    if (diffInWeeks < 4) {
+      return `Il y a ${diffInWeeks} semaine${diffInWeeks > 1 ? 's' : ''}`
+    }
+    
+    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+  }
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -416,7 +556,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex w-full">
+    <div className="flex w-full min-h-screen">
       <DashboardSidebar type="client" activeSection={activeSection} onSectionChange={setActiveSection} />
       
       <div className="flex-1 flex flex-col lg:ml-0 min-h-screen bg-gradient-to-br from-orange-50/50 via-yellow-50/30 to-orange-50/50">
@@ -425,12 +565,266 @@ export default function DashboardPage() {
           userName={`${userData.prenom} ${userData.nom}`}
           userEmail={userData.email}
           onSectionChange={setActiveSection}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          notifications={notifications}
+          unreadCount={unreadCount}
+          onMarkAsRead={markAsRead}
+          onMarkAllAsRead={markAllAsRead}
+          onDeleteNotification={deleteNotification}
         />
         
-        <main className="flex-1 overflow-y-auto">
-          <div className="container py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
+        <main className="flex-1 overflow-y-auto pb-4 md:pb-0">
+          <div className="container py-4 sm:py-6 md:py-8 lg:py-12 px-3 sm:px-4 md:px-6 lg:px-8">
           <AnimatePresence mode="wait">
-          {activeSection === 'overview' && (
+          {/* Section de recherche */}
+          {searchQuery.trim() && (
+            <motion.div
+              key="search"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-4 mb-6"
+            >
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
+                    Résultats de recherche
+                  </h2>
+                  <p className="text-muted-foreground">
+                    {searchResults ? (
+                      <>
+                        {searchResults.reservations.length + searchResults.favoris.length + searchResults.depenses.length + searchResults.messages.length} résultat(s) pour &quot;{searchQuery}&quot;
+                      </>
+                    ) : (
+                      <>Aucun résultat pour &quot;{searchQuery}&quot;</>
+                    )}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select value={searchFilter} onValueChange={(value: 'all' | 'reservations' | 'favoris' | 'depenses' | 'messages') => setSearchFilter(value)}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Filtrer par" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tout</SelectItem>
+                      <SelectItem value="reservations">Réservations</SelectItem>
+                      <SelectItem value="favoris">Favoris</SelectItem>
+                      <SelectItem value="depenses">Dépenses</SelectItem>
+                      <SelectItem value="messages">Messages</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" size="icon" onClick={() => setSearchQuery('')}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {searchResults ? (
+                <div className="space-y-6">
+                  {/* Résultats des réservations */}
+                  {searchResults.reservations.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Calendar className="h-5 w-5" />
+                          Réservations ({searchResults.reservations.length})
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {searchResults.reservations.map((reservation) => (
+                            <motion.div
+                              key={reservation.id}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              className="p-4 border rounded-lg hover:shadow-md transition-shadow cursor-pointer"
+                              onClick={() => setActiveSection('reservations')}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h4 className="font-semibold">{reservation.offre.titre}</h4>
+                                  <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                                    <MapPin className="h-4 w-4" />
+                                    {reservation.offre.ville}, {reservation.offre.region}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                                    <Clock className="h-4 w-4" />
+                                    {new Date(reservation.dateDebut).toLocaleDateString('fr-FR')}
+                                  </p>
+                                </div>
+                                <Badge variant={reservation.statut === 'CONFIRMED' ? 'default' : 'secondary'}>
+                                  {reservation.statut === 'CONFIRMED' ? 'Confirmée' : 
+                                   reservation.statut === 'PENDING' ? 'En attente' :
+                                   reservation.statut === 'CANCELLED' ? 'Annulée' : 'Terminée'}
+                                </Badge>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Résultats des favoris */}
+                  {searchResults.favoris.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Heart className="h-5 w-5" />
+                          Favoris ({searchResults.favoris.length})
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                          {searchResults.favoris.map((favori) => (
+                            <motion.div
+                              key={favori.id}
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                              onClick={() => setActiveSection('favoris')}
+                            >
+                              <div className="h-32 bg-gradient-to-br from-orange-300 to-yellow-300 relative">
+                                {favori.offre.images && favori.offre.images.length > 0 && (
+                                  <Image 
+                                    src={favori.offre.images[0]} 
+                                    alt={favori.offre.titre}
+                                    fill
+                                    className="object-cover"
+                                  />
+                                )}
+                              </div>
+                              <div className="p-3">
+                                <h4 className="font-semibold text-sm truncate">{favori.offre.titre}</h4>
+                                <p className="text-lg font-bold mt-1">
+                                  {Number(favori.offre.prix).toLocaleString()} FCFA
+                                </p>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Résultats des dépenses */}
+                  {searchResults.depenses.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <DollarSign className="h-5 w-5" />
+                          Dépenses ({searchResults.depenses.length})
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {searchResults.depenses.map((depense) => (
+                            <motion.div
+                              key={depense.id}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              className="p-4 border rounded-lg hover:shadow-md transition-shadow cursor-pointer"
+                              onClick={() => setActiveSection('depenses')}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h4 className="font-semibold">{depense.titre}</h4>
+                                  <p className="text-sm text-muted-foreground mt-1">
+                                    {depense.type} • {new Date(depense.date).toLocaleDateString('fr-FR')}
+                                  </p>
+                                  {depense.lieu && (
+                                    <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                                      <MapPin className="h-4 w-4" />
+                                      {depense.lieu}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-lg font-bold text-orange-600">
+                                    {depense.montant.toLocaleString()} FCFA
+                                  </p>
+                                </div>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Résultats des messages */}
+                  {searchResults.messages.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <MessageSquare className="h-5 w-5" />
+                          Messages ({searchResults.messages.length})
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {searchResults.messages.map((message) => {
+                            type MessageWithConversation = MockMessage & { conversationName?: string; conversationId?: string }
+                            const msgWithConv = message as MessageWithConversation
+                            return (
+                              <motion.div
+                                key={message.id}
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                className="p-4 border rounded-lg hover:shadow-md transition-shadow cursor-pointer"
+                                onClick={() => {
+                                  if (msgWithConv.conversationId) {
+                                    setSelectedConversationId(msgWithConv.conversationId)
+                                    setActiveSection('messages')
+                                  }
+                                }}
+                              >
+                                <div className="flex items-start gap-3">
+                                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-orange-400 to-yellow-400 flex items-center justify-center text-white font-bold">
+                                    {message.senderName.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <p className="font-semibold text-sm">
+                                        {msgWithConv.conversationName || message.senderName}
+                                      </p>
+                                      <span className="text-xs text-muted-foreground">
+                                        {new Date(message.timestamp).toLocaleDateString('fr-FR')}
+                                      </span>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground line-clamp-2">
+                                      {message.content}
+                                    </p>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )
+                          })}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-50" />
+                    <h3 className="text-lg font-semibold mb-2">Aucun résultat trouvé</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Essayez avec d&apos;autres mots-clés ou modifiez vos filtres
+                    </p>
+                    <Button variant="outline" onClick={() => setSearchQuery('')}>
+                      Effacer la recherche
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </motion.div>
+          )}
+
+          {!searchQuery.trim() && activeSection === 'overview' && (
             <motion.div
               key="overview"
               initial={{ opacity: 0, x: 20 }}
@@ -444,10 +838,10 @@ export default function DashboardPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
-                <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
           Mon Tableau de Bord
         </h1>
-        <p className="text-base sm:text-lg text-muted-foreground">
+        <p className="text-sm sm:text-base md:text-lg text-muted-foreground">
           Gérez vos réservations, favoris et messages
         </p>
       </motion.div>
@@ -458,7 +852,7 @@ export default function DashboardPage() {
                 initial="hidden"
                 animate="visible"
               >
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             <motion.div variants={itemVariants}>
             <Card className="hover:shadow-lg transition-shadow duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -536,7 +930,7 @@ export default function DashboardPage() {
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", stiffness: 200, delay: 0.4 }}
                 >
-                  0
+                  {conversations.reduce((sum, conv) => sum + conv.unreadCount, 0)}
                 </motion.div>
                 <p className="text-xs text-muted-foreground">Non lus</p>
               </CardContent>
@@ -636,7 +1030,7 @@ export default function DashboardPage() {
             </motion.div>
           )}
 
-          {activeSection === 'reservations' && (
+          {!searchQuery.trim() && activeSection === 'reservations' && (
             <motion.div 
               key="reservations"
               initial={{ opacity: 0, x: 20 }}
@@ -716,7 +1110,14 @@ export default function DashboardPage() {
                             </Button>
                           </motion.div>
                           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                            <Button variant="outline" size="sm" className="w-full sm:w-auto">Contacter le prestataire</Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="w-full sm:w-auto"
+                              onClick={() => setActiveSection('messages')}
+                            >
+                              Contacter le prestataire
+                            </Button>
                           </motion.div>
                         </div>
                       </motion.div>
@@ -729,7 +1130,7 @@ export default function DashboardPage() {
             </motion.div>
           )}
 
-          {activeSection === 'depenses' && (
+          {!searchQuery.trim() && activeSection === 'depenses' && (
             <motion.div 
               key="depenses"
               initial={{ opacity: 0, x: 20 }}
@@ -777,7 +1178,7 @@ export default function DashboardPage() {
               </motion.div>
 
               {/* Statistiques des dépenses */}
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -1042,7 +1443,7 @@ export default function DashboardPage() {
             </motion.div>
           )}
 
-          {activeSection === 'favoris' && (
+          {!searchQuery.trim() && activeSection === 'favoris' && (
             <motion.div 
               key="favoris"
               initial={{ opacity: 0, x: 20 }}
@@ -1134,7 +1535,7 @@ export default function DashboardPage() {
             </motion.div>
           )}
 
-          {activeSection === 'messages' && (
+          {!searchQuery.trim() && activeSection === 'messages' && (
             <motion.div 
               key="messages"
               initial={{ opacity: 0, x: 20 }}
@@ -1145,21 +1546,173 @@ export default function DashboardPage() {
             >
               <Card className="hover:shadow-lg transition-shadow duration-300 border-0 shadow-xl">
                 <CardContent className="p-0">
-                  <ChatInterface
-                    currentUserId={user?.id || 'touriste-current'}
-                    conversations={conversations}
-                    messages={allMessages}
-                    emptyStateTitle="Aucun message"
-                    emptyStateDescription="Vos conversations avec les prestataires apparaîtront ici"
-                    onSendMessage={handleSendMessage}
-                    onSelectConversation={handleSelectConversation}
-                  />
+                  <div className="h-[500px] md:h-[600px]">
+                    <ChatInterface
+                      currentUserId={user?.id || 'touriste-current'}
+                      conversations={conversations}
+                      messages={allMessages}
+                      emptyStateTitle="Aucun message"
+                      emptyStateDescription="Vos conversations avec les prestataires apparaîtront ici"
+                      onSendMessage={handleSendMessage}
+                      onSelectConversation={handleSelectConversation}
+                    />
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>
           )}
 
-          {activeSection === 'profil' && (
+          {!searchQuery.trim() && activeSection === 'notifications' && (
+            <motion.div 
+              key="notifications"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-4"
+            >
+              <motion.div 
+                className="mb-6"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+              >
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
+                  Mes notifications 🔔
+                </h2>
+                <p className="text-muted-foreground">
+                  Gérez toutes vos notifications
+                </p>
+              </motion.div>
+
+              <Card className="hover:shadow-lg transition-shadow duration-300">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Notifications</CardTitle>
+                      <CardDescription>
+                        {unreadCount > 0 ? `${unreadCount} notification(s) non lue(s)` : 'Toutes vos notifications sont lues'}
+                      </CardDescription>
+                    </div>
+                    {unreadCount > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => markAllAsRead()}
+                      >
+                        <Check className="h-4 w-4 mr-2" />
+                        Tout marquer comme lu
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {notificationsLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : notifications.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Bell className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-50" />
+                      <h3 className="text-lg font-semibold mb-2">Aucune notification</h3>
+                      <p className="text-muted-foreground">
+                        Vous n&apos;avez aucune notification pour le moment
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {notifications.map((notification, index) => {
+                        const timeAgo = getTimeAgo(notification.date)
+                        return (
+                          <motion.div
+                            key={notification.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.05, duration: 0.3 }}
+                            className={cn(
+                              "border rounded-lg p-4 hover:shadow-md transition-shadow",
+                              !notification.isRead && "bg-orange-50/50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800"
+                            )}
+                          >
+                            <div className="flex items-start gap-3">
+                              {notification.icon && (
+                                <span className="text-2xl flex-shrink-0">{notification.icon}</span>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2 mb-1">
+                                  <div className="flex items-center gap-2 flex-1">
+                                    <h4 className={cn(
+                                      "font-semibold",
+                                      !notification.isRead && "text-orange-900 dark:text-orange-100"
+                                    )}>
+                                      {notification.titre}
+                                    </h4>
+                                    {!notification.isRead && (
+                                      <div className="h-2 w-2 rounded-full bg-orange-500 flex-shrink-0" />
+                                    )}
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                                    onClick={() => deleteNotification(notification.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                                <p className="text-sm text-muted-foreground mb-2">
+                                  {notification.message}
+                                </p>
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <Clock className="h-3 w-3" />
+                                    <span>{timeAgo}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {!notification.isRead && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 text-xs"
+                                        onClick={() => markAsRead(notification.id)}
+                                      >
+                                        <Check className="h-3 w-3 mr-1" />
+                                        Marquer comme lu
+                                      </Button>
+                                    )}
+                                    {notification.actionLabel && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-xs"
+                                        onClick={() => {
+                                          if (notification.actionUrl) {
+                                            const url = new URL(notification.actionUrl, window.location.origin)
+                                            const section = url.searchParams.get('section')
+                                            if (section) {
+                                              setActiveSection(section)
+                                            }
+                                          }
+                                        }}
+                                      >
+                                        {notification.actionLabel}
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {!searchQuery.trim() && activeSection === 'profil' && (
             <motion.div 
               key="profil"
               initial={{ opacity: 0, x: 20 }}
@@ -1276,10 +1829,25 @@ export default function DashboardPage() {
 
                   <div className="flex flex-col sm:flex-row gap-2 pt-4">
                     <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                      <Button className="w-full sm:w-auto">Enregistrer les modifications</Button>
+                      <Button 
+                        className="w-full sm:w-auto"
+                        onClick={() => {
+                          alert('Modifications enregistrées avec succès ! (Mode développement)')
+                        }}
+                      >
+                        Enregistrer les modifications
+                      </Button>
                     </motion.div>
                     <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                      <Button variant="outline" className="w-full sm:w-auto">Changer le mot de passe</Button>
+                      <Button 
+                        variant="outline" 
+                        className="w-full sm:w-auto"
+                        onClick={() => {
+                          alert('Un email de réinitialisation de mot de passe sera envoyé. (Mode développement)')
+                        }}
+                      >
+                        Changer le mot de passe
+                      </Button>
                     </motion.div>
                   </div>
                 </CardContent>
@@ -1294,5 +1862,3 @@ export default function DashboardPage() {
     </div>
   )
 }
-
-

@@ -5,7 +5,8 @@ import { NextResponse } from 'next/server';
 
 const intlMiddleware = createMiddleware(routing);
 
-export async function proxy(request: NextRequest): Promise<NextResponse> {
+// Fonction proxy exportée comme middleware pour Next.js 16
+export async function middleware(request: NextRequest): Promise<NextResponse> {
   try {
     // Ne pas appliquer le middleware i18n sur les routes API
     if (request.nextUrl.pathname.startsWith('/api/')) {
@@ -21,6 +22,9 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     return NextResponse.next();
   }
 }
+
+// Exporter aussi comme proxy pour compatibilité
+export const proxy = middleware;
 
 export const config = {
   // Correspondre à tous les chemins sauf

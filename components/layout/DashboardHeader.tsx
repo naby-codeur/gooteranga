@@ -1,7 +1,6 @@
 'use client'
 
-import React from 'react'
-import { Bell, Search, User, Settings, Crown } from 'lucide-react'
+import { Bell, Search, User, Settings, Crown, X, Check, Trash2, Clock } from 'lucide-react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import {
@@ -14,15 +13,67 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
 import { motion } from 'framer-motion'
+import { Notification } from '@/lib/hooks/useNotifications'
 
 interface DashboardHeaderProps {
   type: 'client' | 'prestataire'
   userName?: string
   userEmail?: string
   onSectionChange?: (section: string) => void
+  searchQuery?: string
+  onSearchChange?: (query: string) => void
+  notifications?: Notification[]
+  unreadCount?: number
+  onMarkAsRead?: (id: string) => Promise<void>
+  onMarkAllAsRead?: () => Promise<void>
+  onDeleteNotification?: (id: string) => Promise<void>
 }
 
-export function DashboardHeader({ type, userName = 'Utilisateur', userEmail = 'user@example.com', onSectionChange }: DashboardHeaderProps) {
+// Fonction pour formater le temps écoulé
+function getTimeAgo(date: Date): string {
+  const now = new Date()
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+  
+  if (diffInSeconds < 60) {
+    return 'À l\'instant'
+  }
+  
+  const diffInMinutes = Math.floor(diffInSeconds / 60)
+  if (diffInMinutes < 60) {
+    return `Il y a ${diffInMinutes} min${diffInMinutes > 1 ? 's' : ''}`
+  }
+  
+  const diffInHours = Math.floor(diffInMinutes / 60)
+  if (diffInHours < 24) {
+    return `Il y a ${diffInHours} heure${diffInHours > 1 ? 's' : ''}`
+  }
+  
+  const diffInDays = Math.floor(diffInHours / 24)
+  if (diffInDays < 7) {
+    return `Il y a ${diffInDays} jour${diffInDays > 1 ? 's' : ''}`
+  }
+  
+  const diffInWeeks = Math.floor(diffInDays / 7)
+  if (diffInWeeks < 4) {
+    return `Il y a ${diffInWeeks} semaine${diffInWeeks > 1 ? 's' : ''}`
+  }
+  
+  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+}
+
+export function DashboardHeader({ 
+  type, 
+  userName = 'Utilisateur', 
+  userEmail = 'user@example.com', 
+  onSectionChange, 
+  searchQuery = '', 
+  onSearchChange,
+  notifications = [],
+  unreadCount = 0,
+  onMarkAsRead,
+  onMarkAllAsRead,
+  onDeleteNotification,
+}: DashboardHeaderProps) {
   // Initiales pour l'avatar
   const initials = userName
     .split(' ')
@@ -47,13 +98,38 @@ export function DashboardHeader({ type, userName = 'Utilisateur', userEmail = 'u
             transition={{ delay: 0.1, duration: 0.3 }}
             className="relative flex-1 hidden md:block"
           >
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
             <Input
               type="search"
-              placeholder="Rechercher..."
-              className="pl-9 bg-white/80 border-orange-200 focus:border-orange-400 transition-all"
+              placeholder="Rechercher réservations, favoris, dépenses..."
+              value={searchQuery}
+              onChange={(e) => onSearchChange?.(e.target.value)}
+              className="pl-9 pr-9 bg-white/80 border-orange-200 focus:border-orange-400 transition-all"
             />
+            {searchQuery && (
+              <button
+                onClick={() => onSearchChange?.('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-orange-600 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </motion.div>
+          {/* Bouton de recherche mobile */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden text-orange-700 hover:bg-orange-100/50"
+            onClick={() => {
+              // Focus sur la recherche si elle existe, sinon on peut ouvrir un modal
+              const searchInput = document.querySelector('input[type="search"]') as HTMLInputElement
+              if (searchInput) {
+                searchInput.focus()
+              }
+            }}
+          >
+            <Search className="h-5 w-5" />
+          </Button>
         </div>
 
         {/* Zone droite - Actions */}
@@ -224,42 +300,126 @@ export function DashboardHeader({ type, userName = 'Utilisateur', userEmail = 'u
                 >
                   <Bell className="h-5 w-5" />
                 </motion.div>
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 15 }}
-                >
-                  <Badge
-                    variant="destructive"
-                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                {unreadCount > 0 && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 15 }}
                   >
-                    3
-                  </Badge>
-                </motion.div>
+                    <Badge
+                      variant="destructive"
+                      className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                    >
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </Badge>
+                  </motion.div>
+                )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80">
-              <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+            <DropdownMenuContent align="end" className="w-96 max-h-[600px] overflow-y-auto">
+              <div className="flex items-center justify-between px-2 py-1.5">
+                <DropdownMenuLabel className="px-0">Notifications</DropdownMenuLabel>
+                {unreadCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-orange-600 hover:text-orange-700"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      onMarkAllAsRead?.()
+                    }}
+                  >
+                    <Check className="h-3 w-3 mr-1" />
+                    Tout marquer comme lu
+                  </Button>
+                )}
+              </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="flex flex-col items-start gap-1 py-3">
-                <p className="text-sm font-medium">Nouvelle réservation</p>
-                <p className="text-xs text-muted-foreground">
-                  Vous avez reçu une nouvelle demande de réservation
-                </p>
-                <span className="text-xs text-orange-600 mt-1">Il y a 2 heures</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="flex flex-col items-start gap-1 py-3">
-                <p className="text-sm font-medium">Paiement reçu</p>
-                <p className="text-xs text-muted-foreground">
-                  Votre paiement a été traité avec succès
-                </p>
-                <span className="text-xs text-orange-600 mt-1">Il y a 5 heures</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <Button variant="ghost" className="w-full justify-center text-sm text-orange-600">
-                Voir toutes les notifications
-              </Button>
+              {notifications.length === 0 ? (
+                <div className="px-2 py-8 text-center">
+                  <Bell className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-50" />
+                  <p className="text-sm text-muted-foreground">Aucune notification</p>
+                </div>
+              ) : (
+                <>
+                  {notifications.map((notification) => {
+                    const timeAgo = getTimeAgo(notification.date)
+                    return (
+                      <div key={notification.id}>
+                        <DropdownMenuItem
+                          className={`flex flex-col items-start gap-1 py-3 cursor-pointer ${
+                            !notification.isRead ? 'bg-orange-50/50 dark:bg-orange-950/20' : ''
+                          }`}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            if (!notification.isRead) {
+                              onMarkAsRead?.(notification.id)
+                            }
+                            if (notification.actionUrl) {
+                              const url = new URL(notification.actionUrl, window.location.origin)
+                              const section = url.searchParams.get('section')
+                              if (section) {
+                                onSectionChange?.(section)
+                              }
+                            }
+                          }}
+                        >
+                          <div className="flex items-start justify-between w-full gap-2">
+                            <div className="flex items-start gap-2 flex-1 min-w-0">
+                              {notification.icon && (
+                                <span className="text-lg flex-shrink-0">{notification.icon}</span>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <p className={`text-sm font-medium ${!notification.isRead ? 'text-orange-900 dark:text-orange-100' : ''}`}>
+                                    {notification.titre}
+                                  </p>
+                                  {!notification.isRead && (
+                                    <div className="h-2 w-2 rounded-full bg-orange-500 flex-shrink-0" />
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                                  {notification.message}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Clock className="h-3 w-3 text-muted-foreground" />
+                                  <span className="text-xs text-orange-600">{timeAgo}</span>
+                                </div>
+                                {notification.actionLabel && (
+                                  <span className="text-xs text-orange-600 mt-1 inline-block">
+                                    {notification.actionLabel} →
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onDeleteNotification?.(notification.id)
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      </div>
+                    )
+                  })}
+                  <div className="px-2 py-1">
+                    <Button 
+                      variant="ghost" 
+                      className="w-full justify-center text-sm text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                      onClick={() => onSectionChange?.('notifications')}
+                    >
+                      Voir toutes les notifications
+                    </Button>
+                  </div>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 

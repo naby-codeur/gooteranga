@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { apiFetch } from './useApi'
 
 export interface Offre {
@@ -76,21 +76,37 @@ export function useOffres(filters: OffresFilters = {}): UseOffresReturn {
     totalPages: 0,
   })
 
+  // Memoize filters to prevent infinite loops when filters object is recreated
+  // We use individual filter values instead of the filters object to avoid infinite loops
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const memoizedFilters = useMemo(() => filters, [
+    filters.type,
+    filters.region,
+    filters.ville,
+    filters.minPrix,
+    filters.maxPrix,
+    filters.isActive,
+    filters.isFeatured,
+    filters.page,
+    filters.limit,
+    filters.search,
+  ])
+
   const fetchOffres = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
       const params = new URLSearchParams()
       
-      if (filters.type) params.append('type', filters.type)
-      if (filters.region) params.append('region', filters.region)
-      if (filters.ville) params.append('ville', filters.ville)
-      if (filters.minPrix) params.append('minPrix', filters.minPrix)
-      if (filters.maxPrix) params.append('maxPrix', filters.maxPrix)
-      if (filters.isActive !== undefined) params.append('isActive', String(filters.isActive))
-      if (filters.isFeatured) params.append('isFeatured', 'true')
-      if (filters.page) params.append('page', String(filters.page))
-      if (filters.limit) params.append('limit', String(filters.limit))
+      if (memoizedFilters.type) params.append('type', memoizedFilters.type)
+      if (memoizedFilters.region) params.append('region', memoizedFilters.region)
+      if (memoizedFilters.ville) params.append('ville', memoizedFilters.ville)
+      if (memoizedFilters.minPrix) params.append('minPrix', memoizedFilters.minPrix)
+      if (memoizedFilters.maxPrix) params.append('maxPrix', memoizedFilters.maxPrix)
+      if (memoizedFilters.isActive !== undefined) params.append('isActive', String(memoizedFilters.isActive))
+      if (memoizedFilters.isFeatured) params.append('isFeatured', 'true')
+      if (memoizedFilters.page) params.append('page', String(memoizedFilters.page))
+      if (memoizedFilters.limit) params.append('limit', String(memoizedFilters.limit))
 
       const result = await apiFetch<{ offres: Offre[]; pagination: typeof pagination }>(
         `/api/offres?${params.toString()}`
@@ -99,8 +115,8 @@ export function useOffres(filters: OffresFilters = {}): UseOffresReturn {
       if (result.success && result.data) {
         // Si recherche textuelle, filtrer côté client
         let filteredOffres = result.data.offres || []
-        if (filters.search) {
-          const searchLower = filters.search.toLowerCase()
+        if (memoizedFilters.search) {
+          const searchLower = memoizedFilters.search.toLowerCase()
           filteredOffres = filteredOffres.filter((offre: Offre) =>
             offre.titre.toLowerCase().includes(searchLower) ||
             offre.description.toLowerCase().includes(searchLower) ||
@@ -109,7 +125,9 @@ export function useOffres(filters: OffresFilters = {}): UseOffresReturn {
           )
         }
         setOffres(filteredOffres)
-        setPagination(result.data.pagination || pagination)
+        if (result.data.pagination) {
+          setPagination(result.data.pagination)
+        }
       } else {
         setError(result.error || 'Erreur lors du chargement des offres')
       }
@@ -119,7 +137,7 @@ export function useOffres(filters: OffresFilters = {}): UseOffresReturn {
     } finally {
       setLoading(false)
     }
-  }, [filters, pagination])
+  }, [memoizedFilters])
 
   useEffect(() => {
     fetchOffres()

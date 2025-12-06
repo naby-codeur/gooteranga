@@ -22,6 +22,7 @@ import {
   ChevronLeft,
   ChevronRight,
   TrendingUp,
+  Bell,
 } from 'lucide-react'
 
 interface SidebarItem {
@@ -43,6 +44,7 @@ const clientItems: SidebarItem[] = [
   { id: 'depenses', label: 'Mes dépenses', icon: DollarSign, emoji: '💰' },
   { id: 'favoris', label: 'Favoris', icon: Heart, emoji: '❤️' },
   { id: 'messages', label: 'Messages', icon: MessageSquare, emoji: '💬' },
+  { id: 'notifications', label: 'Notifications', icon: Bell, emoji: '🔔' },
   { id: 'profil', label: 'Profil', icon: User, emoji: '👤' },
 ]
 

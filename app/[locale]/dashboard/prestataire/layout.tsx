@@ -2,11 +2,13 @@
 
 export default async function PrestataireLayout({
   children,
-  params: _params,
+  params,
 }: {
   children: React.ReactNode
   params: Promise<{ locale: string }>
 }) {
+  // Await params in Next.js 15+
+  await params
   // Accès direct sans vérification d'authentification
   return <>{children}</>
 }

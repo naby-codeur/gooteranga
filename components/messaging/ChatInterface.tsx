@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState, useRef, useEffect, useMemo } from 'react'
+import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -10,7 +9,6 @@ import { Badge } from '@/components/ui/badge'
 import { 
   MessageSquare, 
   Send, 
-  Smile, 
   Paperclip, 
   Search,
   MoreVertical,
@@ -18,13 +16,15 @@ import {
   Video,
   Check,
   CheckCheck,
-  Clock,
   Mic,
   Play,
-  Pause
+  X,
+  FileText
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { VoiceRecorder } from './VoiceRecorder'
+import { EmojiPicker } from './EmojiPicker'
+import Image from 'next/image'
 
 interface Message {
   id: string
@@ -38,6 +38,13 @@ interface Message {
   isVoiceMessage?: boolean
   voiceUrl?: string
   voiceDuration?: number
+  attachments?: Array<{
+    id: string
+    name: string
+    url: string
+    type: 'image' | 'file'
+    size?: number
+  }>
 }
 
 interface Conversation {
@@ -60,7 +67,7 @@ interface ChatInterfaceProps {
   conversations?: Conversation[]
   messages?: Message[]
   currentUserId: string
-  onSendMessage?: (content: string, conversationId: string, audioBlob?: Blob, duration?: number) => void
+  onSendMessage?: (content: string, conversationId: string, audioBlob?: Blob, duration?: number, attachments?: File[]) => void
   onSelectConversation?: (conversationId: string) => void
   emptyStateTitle?: string
   emptyStateDescription?: string
@@ -79,17 +86,20 @@ export function ChatInterface({
   const [messageInput, setMessageInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false)
-  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null)
+  const [attachments, setAttachments] = useState<File[]>([])
+  const [attachmentPreviews, setAttachmentPreviews] = useState<Array<{ file: File; preview: string }>>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const voiceAudioRefs = useRef<Map<string, HTMLAudioElement>>(new Map())
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const filteredConversations = conversations.filter(conv =>
     conv.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const currentMessages = selectedConversation
-    ? messages.filter(msg => msg.senderId === selectedConversation || msg.senderId === currentUserId)
-    : []
+  const currentMessages = useMemo(() => {
+    return selectedConversation
+      ? messages.filter(msg => msg.senderId === selectedConversation || msg.senderId === currentUserId)
+      : []
+  }, [selectedConversation, messages, currentUserId])
 
   const selectedConv = conversations.find(c => c.id === selectedConversation)
 
@@ -97,11 +107,63 @@ export function ChatInterface({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [currentMessages])
 
-  const handleSendMessage = () => {
-    if (messageInput.trim() && selectedConversation && onSendMessage) {
-      onSendMessage(messageInput, selectedConversation)
-      setMessageInput('')
+  // Cleanup previews on unmount
+  useEffect(() => {
+    return () => {
+      attachmentPreviews.forEach(preview => {
+        URL.revokeObjectURL(preview.preview)
+      })
     }
+  }, [attachmentPreviews])
+
+  const handleSendMessage = () => {
+    if ((messageInput.trim() || attachments.length > 0) && selectedConversation && onSendMessage) {
+      onSendMessage(messageInput, selectedConversation, undefined, undefined, attachments)
+      setMessageInput('')
+      setAttachments([])
+      setAttachmentPreviews([])
+    }
+  }
+
+  const handleEmojiSelect = (emoji: string) => {
+    setMessageInput(prev => prev + emoji)
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length > 0) {
+      const newAttachments = [...attachments, ...files]
+      setAttachments(newAttachments)
+      
+      // Créer des aperçus pour les images
+      const newPreviews = files
+        .filter(file => file.type.startsWith('image/'))
+        .map(file => ({
+          file,
+          preview: URL.createObjectURL(file)
+        }))
+      setAttachmentPreviews(prev => [...prev, ...newPreviews])
+    }
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  const removeAttachment = (index: number) => {
+    const fileToRemove = attachments[index]
+    const previewToRemove = attachmentPreviews.find(p => p.file === fileToRemove)
+    if (previewToRemove) {
+      URL.revokeObjectURL(previewToRemove.preview)
+    }
+    setAttachments(prev => prev.filter((_, i) => i !== index))
+    setAttachmentPreviews(prev => prev.filter(p => p.file !== fileToRemove))
+  }
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
   }
 
   const handleSendVoiceMessage = (audioBlob: Blob, duration: number) => {
@@ -124,9 +186,12 @@ export function ChatInterface({
   }
 
   return (
-    <div className="flex h-[600px] rounded-lg border bg-background overflow-hidden shadow-lg">
+    <div className="flex flex-col md:flex-row h-[500px] md:h-[600px] rounded-lg border bg-background overflow-hidden shadow-lg">
       {/* Sidebar - Liste des conversations */}
-      <div className="w-80 border-r bg-gradient-to-b from-orange-50/50 to-yellow-50/50 dark:from-orange-950/10 dark:to-yellow-950/10">
+      <div className={cn(
+        "w-full md:w-80 border-r bg-gradient-to-b from-orange-50/50 to-yellow-50/50 dark:from-orange-950/10 dark:to-yellow-950/10",
+        selectedConversation && "hidden md:block"
+      )}>
         <div className="p-4 border-b bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
@@ -212,9 +277,18 @@ export function ChatInterface({
         {selectedConversation && selectedConv ? (
           <>
             {/* Header de la conversation */}
-            <div className="p-4 border-b bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-950/20 dark:to-yellow-950/20 backdrop-blur-sm">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 flex-1">
+            <div className="p-3 md:p-4 border-b bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-950/20 dark:to-yellow-950/20 backdrop-blur-sm">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
+                  {/* Bouton retour mobile */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="md:hidden h-8 w-8"
+                    onClick={() => setSelectedConversation(null)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                   <Avatar className="h-10 w-10 ring-2 ring-orange-200 dark:ring-orange-800">
                     <AvatarImage src={selectedConv.avatar} />
                     <AvatarFallback className="bg-gradient-to-br from-orange-400 to-yellow-400 text-white">
@@ -290,8 +364,8 @@ export function ChatInterface({
                           </Avatar>
                         )}
                         {showAvatar && isOwn && <div className="w-8" />}
-                        <div className={cn(
-                          "flex flex-col gap-1 max-w-[70%]",
+                        <div                         className={cn(
+                          "flex flex-col gap-1 max-w-[85%] md:max-w-[70%]",
                           isOwn && "items-end"
                         )}>
                           {showAvatar && (
@@ -305,13 +379,75 @@ export function ChatInterface({
                           <motion.div
                             whileHover={{ scale: 1.02 }}
                             className={cn(
-                              "rounded-2xl px-4 py-2 shadow-sm",
+                              "rounded-2xl px-4 py-2 shadow-sm max-w-full",
                               isOwn
                                 ? "bg-gradient-to-r from-orange-500 to-yellow-500 text-white rounded-br-sm"
                                 : "bg-white dark:bg-gray-800 border rounded-bl-sm"
                             )}
                           >
-                            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                            {/* Pièces jointes */}
+                            {message.attachments && message.attachments.length > 0 && (
+                              <div className="mb-2 space-y-2">
+                                {message.attachments.map((attachment) => (
+                                  <div
+                                    key={attachment.id}
+                                    className={cn(
+                                      "rounded-lg overflow-hidden",
+                                      attachment.type === 'image' ? "max-w-xs" : "max-w-sm"
+                                    )}
+                                  >
+                                    {attachment.type === 'image' ? (
+                                      <div className="relative">
+                                        <Image
+                                          src={attachment.url}
+                                          alt={attachment.name}
+                                          width={300}
+                                          height={200}
+                                          className="object-cover rounded-lg"
+                                        />
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-2 p-2 bg-white/10 dark:bg-gray-700/50 rounded-lg">
+                                        <FileText className="h-5 w-5 flex-shrink-0" />
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-xs font-medium truncate">{attachment.name}</p>
+                                          {attachment.size && (
+                                            <p className="text-xs text-muted-foreground">
+                                              {formatFileSize(attachment.size)}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            
+                            {/* Message vocal */}
+                            {message.isVoiceMessage && message.voiceUrl && (
+                              <div className="mb-2 flex items-center gap-2 p-2 bg-white/10 dark:bg-gray-700/50 rounded-lg">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => {
+                                    const audio = new Audio(message.voiceUrl)
+                                    audio.play()
+                                  }}
+                                >
+                                  <Play className="h-4 w-4" />
+                                </Button>
+                                <div className="flex-1 h-1 bg-white/20 rounded-full">
+                                  <div className="h-full bg-white w-1/3 rounded-full" />
+                                </div>
+                                <span className="text-xs">
+                                  {message.voiceDuration ? `${Math.floor(message.voiceDuration)}s` : 'Audio'}
+                                </span>
+                              </div>
+                            )}
+                            
+                            <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
                           </motion.div>
                           <div className={cn(
                             "flex items-center gap-1 text-xs text-muted-foreground px-2",
@@ -341,9 +477,80 @@ export function ChatInterface({
             </div>
 
             {/* Zone de saisie */}
-            <div className="p-4 border-t bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+            <div className="p-3 md:p-4 border-t bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+              {/* Aperçus des pièces jointes */}
+              {attachmentPreviews.length > 0 && (
+                <div className="mb-2 flex gap-2 overflow-x-auto pb-2">
+                  {attachmentPreviews.map((preview, index) => (
+                    <div key={index} className="relative flex-shrink-0">
+                      <div className="relative w-20 h-20 rounded-lg overflow-hidden border-2 border-orange-200 dark:border-orange-800">
+                        <Image
+                          src={preview.preview}
+                          alt="Preview"
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-red-500 hover:bg-red-600 text-white"
+                        onClick={() => removeAttachment(index)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                  {attachments.filter(f => !f.type.startsWith('image/')).map((file, index) => {
+                    const fileIndex = attachments.findIndex(f => f === file)
+                    return (
+                      <div key={`file-${index}`} className="relative flex-shrink-0">
+                        <div className="flex items-center gap-2 p-2 bg-gray-100 dark:bg-gray-800 rounded-lg border-2 border-orange-200 dark:border-orange-800">
+                          <FileText className="h-5 w-5 text-orange-600" />
+                          <div className="text-xs max-w-[100px]">
+                            <p className="truncate font-medium">{file.name}</p>
+                            <p className="text-muted-foreground">{formatFileSize(file.size)}</p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-red-500 hover:bg-red-600 text-white"
+                          onClick={() => removeAttachment(fileIndex)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Enregistreur vocal */}
+              {showVoiceRecorder && (
+                <div className="mb-2">
+                  <VoiceRecorder
+                    onSend={handleSendVoiceMessage}
+                    onCancel={() => setShowVoiceRecorder(false)}
+                  />
+                </div>
+              )}
+
               <div className="flex items-end gap-2">
-                <Button variant="ghost" size="icon" className="h-10 w-10">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*,.pdf,.doc,.docx,.txt"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 flex-shrink-0"
+                  onClick={() => fileInputRef.current?.click()}
+                >
                   <Paperclip className="h-5 w-5" />
                 </Button>
                 <div className="flex-1 relative">
@@ -357,15 +564,19 @@ export function ChatInterface({
                       }
                     }}
                     placeholder="Tapez votre message..."
-                    className="pr-10 rounded-full border-2 focus:border-orange-400"
+                    className="pr-20 rounded-full border-2 focus:border-orange-400 text-sm md:text-base"
                   />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-                  >
-                    <Smile className="h-5 w-5" />
-                  </Button>
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setShowVoiceRecorder(!showVoiceRecorder)}
+                    >
+                      <Mic className="h-5 w-5" />
+                    </Button>
+                  </div>
                 </div>
                 <motion.div
                   whileHover={{ scale: 1.05 }}
@@ -373,8 +584,8 @@ export function ChatInterface({
                 >
                   <Button
                     onClick={handleSendMessage}
-                    disabled={!messageInput.trim()}
-                    className="h-10 w-10 rounded-full bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 shadow-lg"
+                    disabled={!messageInput.trim() && attachments.length === 0}
+                    className="h-10 w-10 rounded-full bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 shadow-lg flex-shrink-0"
                     size="icon"
                   >
                     <Send className="h-5 w-5" />

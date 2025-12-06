@@ -57,8 +57,9 @@ import {
   getMessagesForConversation,
   type MockMessage 
 } from '@/lib/mock-messaging-data'
+import type { ReactElement } from 'react'
 
-export default function PrestataireDashboardPage() {
+export default function PrestataireDashboardPage(): ReactElement {
   const [activeSection, setActiveSection] = useState('overview')
   const [logoImage, setLogoImage] = useState<string | null>(null)
   const [showCreateOffreForm, setShowCreateOffreForm] = useState(false)
@@ -71,7 +72,10 @@ export default function PrestataireDashboardPage() {
   // Récupérer les données utilisateur depuis l'API
   const { user, loading: authLoading } = useAuth()
   const { reservations, loading: reservationsLoading } = useReservations()
-  const { offres, loading: offresLoading } = useOffres({ isActive: true })
+  
+  // Memoize filters to prevent infinite loops
+  const offresFilters = useMemo(() => ({ isActive: true }), [])
+  const { offres, loading: offresLoading } = useOffres(offresFilters)
 
   const getLocaleLabel = (loc: string) => {
     switch (loc) {
@@ -141,7 +145,7 @@ export default function PrestataireDashboardPage() {
     return offres.filter(offre => offre.prestataire?.id === user.prestataire?.id)
   }, [offres, user])
 
-  // Calculer le solde disponible (revenus payés moins commissions)
+  // Calculer le solde disponible (revenus payés)
   const solde = useMemo(() => {
     return reservations
       .filter(r => r.paiement?.statut === 'PAID')
@@ -155,7 +159,6 @@ export default function PrestataireDashboardPage() {
       .map(r => ({
         id: r.id,
         montant: Number(r.montant),
-        commission: 0, // Pas de commission pour l'instant
         methode: r.paiement?.methode || 'Non spécifié',
         date: r.createdAt,
         statut: 'paid',
@@ -873,11 +876,8 @@ export default function PrestataireDashboardPage() {
                         </div>
                         <div className="text-left sm:text-right w-full sm:w-auto">
                           <Badge variant="secondary" className="mb-2 sm:mb-0">
-                            Commission: {paiement.commission.toLocaleString()} FCFA
+                            Payé
                           </Badge>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Net: {(paiement.montant - paiement.commission).toLocaleString()} FCFA
-                          </p>
                         </div>
                       </motion.div>
                     ))
@@ -1527,7 +1527,7 @@ export default function PrestataireDashboardPage() {
 
           </div>
         </main>
-              </div>
+      </div>
     </div>
   )
 }

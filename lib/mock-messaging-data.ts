@@ -29,6 +29,16 @@ export interface MockMessage {
   timestamp: Date
   isRead: boolean
   isFromUser: boolean
+  isVoiceMessage?: boolean
+  voiceUrl?: string
+  voiceDuration?: number
+  attachments?: Array<{
+    id: string
+    name: string
+    url: string
+    type: 'image' | 'file'
+    size?: number
+  }>
 }
 
 // Données fictives pour les prestataires

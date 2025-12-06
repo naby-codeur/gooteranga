@@ -118,6 +118,58 @@ const mockFavoris: Favori[] = [
     },
     createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
   },
+  {
+    id: 'fav-4',
+    offre: {
+      id: 'offre-6',
+      titre: 'Safari dans le Parc Niokolo-Koba',
+      description: 'Découvrez la faune et la flore du plus grand parc national du Sénégal',
+      prix: 25000,
+      images: ['/images/ba1.png'],
+      type: 'ACTIVITE',
+      region: 'Tambacounda',
+      ville: 'Tambacounda',
+      rating: 4.9,
+      prestataire: {
+        id: 'prest-3',
+        nomEntreprise: 'Nature Sénégal',
+        logo: null,
+        isVerified: true,
+        rating: 4.8,
+      },
+      _count: {
+        avis: 156,
+        reservations: 289,
+      },
+    },
+    createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'fav-5',
+    offre: {
+      id: 'offre-7',
+      titre: 'Auberge de Jeunesse - Lac Rose',
+      description: 'Hébergement économique au bord du célèbre Lac Rose',
+      prix: 12000,
+      images: ['/images/ba2.png'],
+      type: 'HEBERGEMENT',
+      region: 'Dakar',
+      ville: 'Rufisque',
+      rating: 4.3,
+      prestataire: {
+        id: 'prest-6',
+        nomEntreprise: 'Auberge Lac Rose',
+        logo: null,
+        isVerified: false,
+        rating: 4.2,
+      },
+      _count: {
+        avis: 67,
+        reservations: 123,
+      },
+    },
+    createdAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
+  },
 ]
 
 export function useFavoris(): UseFavorisReturn {
