@@ -27,16 +27,253 @@ import Image from 'next/image'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useReservations } from '@/lib/hooks/useReservations'
 import { useFavoris } from '@/lib/hooks/useFavoris'
+import { useDepenses } from '@/lib/hooks/useDepenses'
 import { ChatInterface } from '@/components/messaging/ChatInterface'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Plus, Trash2 } from 'lucide-react'
+import { useLocale } from 'next-intl'
+import { usePathname, useRouter } from '@/i18n/routing'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { 
+  getTouristeConversations, 
+  getMessagesForConversation,
+  type MockMessage 
+} from '@/lib/mock-messaging-data'
+
+// Type pour les données de dépense
+type DepenseFormData = {
+  titre: string
+  description?: string
+  categorie: string
+  montant: number
+  date?: string
+  lieu?: string
+  methode?: string
+}
+
+// Type pour les dépenses affichées
+type DepenseDisplay = {
+  id: string
+  titre: string
+  type: string
+  date: string
+  montant: number
+  statut: string
+  methode: string
+  sejour: string
+  isHorsPlateforme: boolean
+  description?: string
+  lieu?: string
+}
+
+// Composant pour le formulaire d'ajout de dépense
+function AddDepenseForm({ onSuccess, addDepense }: { onSuccess: () => void; addDepense: (data: DepenseFormData) => Promise<unknown> }) {
+  const [loading, setLoading] = useState(false)
+  const [formData, setFormData] = useState({
+    titre: '',
+    description: '',
+    categorie: '',
+    montant: '',
+    date: new Date().toISOString().split('T')[0],
+    lieu: '',
+    methode: '',
+  })
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!formData.titre || !formData.categorie || !formData.montant) {
+      alert('Veuillez remplir tous les champs obligatoires')
+      return
+    }
+
+    try {
+      setLoading(true)
+      await addDepense({
+        titre: formData.titre,
+        description: formData.description || undefined,
+        categorie: formData.categorie,
+        montant: Number(formData.montant),
+        date: formData.date,
+        lieu: formData.lieu || undefined,
+        methode: formData.methode || undefined,
+      })
+      setFormData({
+        titre: '',
+        description: '',
+        categorie: '',
+        montant: '',
+        date: new Date().toISOString().split('T')[0],
+        lieu: '',
+        methode: '',
+      })
+      onSuccess()
+    } catch (error) {
+      console.error('Error adding expense:', error)
+      alert('Erreur lors de l\'ajout de la dépense')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="titre">Titre *</Label>
+        <Input
+          id="titre"
+          value={formData.titre}
+          onChange={(e) => setFormData({ ...formData, titre: e.target.value })}
+          placeholder="Ex: Restaurant local"
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="categorie">Catégorie *</Label>
+        <Select
+          value={formData.categorie}
+          onValueChange={(value) => setFormData({ ...formData, categorie: value })}
+          required
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Sélectionner une catégorie" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="HEBERGEMENT">Hébergement</SelectItem>
+            <SelectItem value="RESTAURATION">Restauration</SelectItem>
+            <SelectItem value="TRANSPORT">Transport</SelectItem>
+            <SelectItem value="ACTIVITE">Activité</SelectItem>
+            <SelectItem value="SHOPPING">Shopping</SelectItem>
+            <SelectItem value="AUTRE">Autre</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="montant">Montant (FCFA) *</Label>
+        <Input
+          id="montant"
+          type="number"
+          min="0"
+          step="0.01"
+          value={formData.montant}
+          onChange={(e) => setFormData({ ...formData, montant: e.target.value })}
+          placeholder="0"
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="date">Date *</Label>
+        <Input
+          id="date"
+          type="date"
+          value={formData.date}
+          onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="lieu">Lieu</Label>
+        <Input
+          id="lieu"
+          value={formData.lieu}
+          onChange={(e) => setFormData({ ...formData, lieu: e.target.value })}
+          placeholder="Ex: Dakar, Sénégal"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="methode">Méthode de paiement</Label>
+        <Input
+          id="methode"
+          value={formData.methode}
+          onChange={(e) => setFormData({ ...formData, methode: e.target.value })}
+          placeholder="Ex: Espèces, Carte, Mobile Money"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="description">Description</Label>
+        <Textarea
+          id="description"
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          placeholder="Notes supplémentaires (optionnel)"
+          rows={3}
+        />
+      </div>
+
+      <div className="flex justify-end gap-2 pt-4">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onSuccess}
+          disabled={loading}
+        >
+          Annuler
+        </Button>
+        <Button type="submit" disabled={loading} className="bg-orange-600 hover:bg-orange-700">
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Ajout...
+            </>
+          ) : (
+            'Ajouter'
+          )}
+        </Button>
+      </div>
+    </form>
+  )
+}
 
 export default function DashboardPage() {
   const [activeSection, setActiveSection] = useState('overview')
   const [profileImage, setProfileImage] = useState<string | null>(null)
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
+  const [localMessages, setLocalMessages] = useState<MockMessage[]>([])
+  const pathname = usePathname()
+  const router = useRouter()
+  const locale = useLocale()
   
   // Récupérer les données utilisateur
   const { user, loading: authLoading } = useAuth()
   const { reservations, loading: reservationsLoading } = useReservations()
   const { favoris, loading: favorisLoading, removeFavori } = useFavoris()
+  const { depenses: depensesManuelles, loading: depensesLoading, addDepense, deleteDepense } = useDepenses()
+  const [showAddDepenseDialog, setShowAddDepenseDialog] = useState(false)
+
+  const getLocaleLabel = (loc: string) => {
+    switch (loc) {
+      case 'fr':
+        return '🇫🇷 FR'
+      case 'en':
+        return '🇬🇧 EN'
+      case 'ar':
+        return '🇸🇦 AR'
+      case 'es':
+        return '🇪🇸 ES'
+      case 'pt':
+        return '🇵🇹 PT'
+      case 'de':
+        return '🇩🇪 DE'
+      case 'it':
+        return '🇮🇹 IT'
+      default:
+        return '🌐'
+    }
+  }
 
   // Données utilisateur depuis l'API
   const userData = useMemo(() => ({
@@ -60,7 +297,7 @@ export default function DashboardPage() {
   }
 
   // Calculer les dépenses depuis les réservations payées
-  const depenses = useMemo(() => {
+  const depensesReservations = useMemo(() => {
     return reservations
       .filter(r => r.paiement?.statut === 'PAID')
       .map(r => ({
@@ -74,8 +311,36 @@ export default function DashboardPage() {
         statut: r.paiement?.statut === 'PAID' ? 'paye' : 'en_attente',
         methode: r.paiement?.methode || 'Non spécifié',
         sejour: `${new Date(r.dateDebut).toLocaleDateString('fr-FR')}${r.dateFin ? ` - ${new Date(r.dateFin).toLocaleDateString('fr-FR')}` : ''}`,
+        isHorsPlateforme: false,
+        description: undefined as string | undefined,
+        lieu: undefined as string | undefined,
       }))
   }, [reservations])
+
+  // Combiner les dépenses des réservations et les dépenses manuelles
+  const depenses = useMemo(() => {
+    const depensesManuellesFormatees = depensesManuelles.map(d => ({
+      id: d.id,
+      titre: d.titre,
+      type: d.categorie === 'HEBERGEMENT' ? 'Hébergement' :
+            d.categorie === 'RESTAURATION' ? 'Restauration' :
+            d.categorie === 'TRANSPORT' ? 'Transport' :
+            d.categorie === 'ACTIVITE' ? 'Activité' :
+            d.categorie === 'SHOPPING' ? 'Shopping' : 'Autre',
+      date: d.date,
+      montant: Number(d.montant),
+      statut: 'paye' as const,
+      methode: d.methode || 'Non spécifié',
+      sejour: new Date(d.date).toLocaleDateString('fr-FR'),
+      isHorsPlateforme: true,
+      description: d.description || undefined,
+      lieu: d.lieu || undefined,
+    }))
+    
+    return [...depensesReservations, ...depensesManuellesFormatees].sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    )
+  }, [depensesReservations, depensesManuelles])
 
   const totalDepenses = useMemo(() => depenses.reduce((sum, d) => sum + d.montant, 0), [depenses])
   const depensesParType = useMemo(() => depenses.reduce((acc, d) => {
@@ -83,7 +348,53 @@ export default function DashboardPage() {
     return acc
   }, {} as Record<string, number>), [depenses])
 
-  const loading = authLoading || reservationsLoading || favorisLoading
+  // Données fictives pour la messagerie
+  const conversations = useMemo(() => {
+    return getTouristeConversations(user?.id || 'touriste-current')
+  }, [user?.id])
+
+  const messages = useMemo(() => {
+    if (!selectedConversationId) return []
+    const conversation = conversations.find(c => c.id === selectedConversationId)
+    if (!conversation) return []
+    
+    return getMessagesForConversation(
+      selectedConversationId,
+      user?.id || 'touriste-current',
+      conversation.user.id,
+      conversation.name
+    )
+  }, [selectedConversationId, conversations, user?.id])
+
+  const handleSendMessage = (content: string, conversationId: string) => {
+    const conversation = conversations.find(c => c.id === conversationId)
+    if (!conversation) return
+
+    const newMessage: MockMessage = {
+      id: `msg-${Date.now()}`,
+      content,
+      senderId: user?.id || 'touriste-current',
+      senderName: 'Vous',
+      timestamp: new Date(),
+      isRead: false,
+      isFromUser: true,
+    }
+
+    setLocalMessages(prev => [...prev, newMessage])
+  }
+
+  const handleSelectConversation = (conversationId: string) => {
+    setSelectedConversationId(conversationId)
+    setLocalMessages([])
+  }
+
+  const allMessages = useMemo(() => {
+    return [...messages, ...localMessages].sort((a, b) => 
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    )
+  }, [messages, localMessages])
+
+  const loading = authLoading || reservationsLoading || favorisLoading || depensesLoading
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -428,17 +739,41 @@ export default function DashboardPage() {
               className="space-y-4"
             >
               <motion.div 
-                className="mb-6"
+                className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
               >
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
-                  Mes dépenses 💰
-                </h2>
-                <p className="text-muted-foreground">
-                  Suivez toutes vos dépenses durant votre séjour au Sénégal
-                </p>
+                <div>
+                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
+                    Mes dépenses 💰
+                  </h2>
+                  <p className="text-muted-foreground">
+                    Suivez toutes vos dépenses durant votre séjour au Sénégal
+                  </p>
+                </div>
+                <Dialog open={showAddDepenseDialog} onOpenChange={setShowAddDepenseDialog}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-orange-600 hover:bg-orange-700">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Ajouter une dépense
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                      <DialogTitle>Ajouter une dépense</DialogTitle>
+                      <DialogDescription>
+                        Ajoutez une dépense effectuée hors de Gooteranga durant votre séjour
+                      </DialogDescription>
+                    </DialogHeader>
+                    <AddDepenseForm 
+                      onSuccess={() => {
+                        setShowAddDepenseDialog(false)
+                      }}
+                      addDepense={addDepense}
+                    />
+                  </DialogContent>
+                </Dialog>
               </motion.div>
 
               {/* Statistiques des dépenses */}
@@ -620,15 +955,49 @@ export default function DashboardPage() {
                               <div className="flex-1">
                                 <div className="flex items-start justify-between mb-2">
                                   <div>
-                                    <h3 className="text-lg font-semibold">{depense.titre}</h3>
+                                    <div className="flex items-center gap-2">
+                                      <h3 className="text-lg font-semibold">{depense.titre}</h3>
+                                      {depense.isHorsPlateforme && (
+                                        <Badge variant="outline" className="text-xs">
+                                          Hors plateforme
+                                        </Badge>
+                                      )}
+                                    </div>
                                     <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
                                       <Clock className="h-4 w-4" />
                                       {depense.sejour}
                                     </p>
+                                    {(depense as DepenseDisplay).lieu && (
+                                      <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                                        <MapPin className="h-4 w-4" />
+                                        {(depense as DepenseDisplay).lieu}
+                                      </p>
+                                    )}
+                                    {(depense as DepenseDisplay).description && (
+                                      <p className="text-sm text-muted-foreground mt-1">
+                                        {(depense as DepenseDisplay).description}
+                                      </p>
+                                    )}
                                   </div>
-                                  <Badge variant="default" className="ml-2">
-                                    {depense.statut === 'paye' ? 'Payé' : 'En attente'}
-                                  </Badge>
+                                  <div className="flex flex-col items-end gap-2">
+                                    <Badge variant="default" className="ml-2">
+                                      {depense.statut === 'paye' ? 'Payé' : 'En attente'}
+                                    </Badge>
+                                    {depense.isHorsPlateforme && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={async () => {
+                                          if (confirm('Êtes-vous sûr de vouloir supprimer cette dépense ?')) {
+                                            await deleteDepense(depense.id)
+                                          }
+                                        }}
+                                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    )}
+                                  </div>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mt-3">
                                   <div className="flex items-center gap-1">
@@ -777,17 +1146,13 @@ export default function DashboardPage() {
               <Card className="hover:shadow-lg transition-shadow duration-300 border-0 shadow-xl">
                 <CardContent className="p-0">
                   <ChatInterface
-                    currentUserId={user?.id || ''}
+                    currentUserId={user?.id || 'touriste-current'}
+                    conversations={conversations}
+                    messages={allMessages}
                     emptyStateTitle="Aucun message"
                     emptyStateDescription="Vos conversations avec les prestataires apparaîtront ici"
-                    onSendMessage={(content, conversationId) => {
-                      // TODO: Implémenter l'envoi de message
-                      console.log('Envoi message:', content, conversationId)
-                    }}
-                    onSelectConversation={(conversationId) => {
-                      // TODO: Charger les messages de la conversation
-                      console.log('Sélection conversation:', conversationId)
-                    }}
+                    onSendMessage={handleSendMessage}
+                    onSelectConversation={handleSelectConversation}
                   />
                 </CardContent>
               </Card>
@@ -870,6 +1235,42 @@ export default function DashboardPage() {
                         defaultValue={userData.telephone}
                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                       />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <label className="text-sm font-medium">Langue</label>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" className="w-full justify-between">
+                            <span className="flex items-center gap-2">
+                              <span className="text-lg">🌐</span>
+                              <span>{getLocaleLabel(locale as string)}</span>
+                            </span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-full">
+                          <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'fr' })}>
+                            🇫🇷 Français
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'en' })}>
+                            🇬🇧 English
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'ar' })}>
+                            🇸🇦 العربية
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'es' })}>
+                            🇪🇸 Español
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'it' })}>
+                            🇮🇹 Italiano
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'pt' })}>
+                            🇵🇹 Português
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'de' })}>
+                            🇩🇪 Deutsch
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
 

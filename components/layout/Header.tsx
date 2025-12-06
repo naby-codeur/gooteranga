@@ -36,6 +36,14 @@ export function Header() {
         return '🇬🇧 EN'
       case 'ar':
         return '🇸🇦 AR'
+      case 'es':
+        return '🇪🇸 ES'
+      case 'pt':
+        return '🇵🇹 PT'
+      case 'de':
+        return '🇩🇪 DE'
+      case 'it':
+        return '🇮🇹 IT'
       default:
         return '🌐'
     }
@@ -45,8 +53,8 @@ export function Header() {
     <header 
       className={`sticky top-0 z-50 w-full transition-all duration-300 ${
         scrolled 
-          ? 'bg-background/95 backdrop-blur-md border-b shadow-sm' 
-          : 'bg-transparent border-b border-transparent'
+          ? 'bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 backdrop-blur-md border-b shadow-sm' 
+          : 'bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 border-b border-transparent'
       }`}
     >
       <div className="flex h-16 sm:h-20 items-center justify-between px-3 sm:px-4 md:px-6 lg:px-8 max-w-full">
@@ -180,6 +188,18 @@ export function Header() {
               <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'ar' })}>
                 🇸🇦 العربية
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'es' })}>
+                🇪🇸 Español
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'it' })}>
+                🇮🇹 Italiano
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'pt' })}>
+                🇵🇹 Português
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'de' })}>
+                🇩🇪 Deutsch
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -308,7 +328,13 @@ export function Header() {
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" className="w-full justify-start">
                           <span className="text-lg mr-2">🌐</span>
-                          {locale === 'fr' ? '🇫🇷 Français' : locale === 'en' ? '🇬🇧 English' : '🇸🇦 العربية'}
+                          {locale === 'fr' ? '🇫🇷 Français' : 
+                           locale === 'en' ? '🇬🇧 English' : 
+                           locale === 'ar' ? '🇸🇦 العربية' :
+                           locale === 'es' ? '🇪🇸 Español' :
+                           locale === 'it' ? '🇮🇹 Italiano' :
+                           locale === 'pt' ? '🇵🇹 Português' :
+                           locale === 'de' ? '🇩🇪 Deutsch' : '🌐'}
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start">
@@ -320,6 +346,18 @@ export function Header() {
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'ar' })}>
                           🇸🇦 العربية
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'es' })}>
+                          🇪🇸 Español
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'it' })}>
+                          🇮🇹 Italiano
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'pt' })}>
+                          🇵🇹 Português
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'de' })}>
+                          🇩🇪 Deutsch
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

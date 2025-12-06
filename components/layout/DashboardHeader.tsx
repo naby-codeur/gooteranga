@@ -1,8 +1,9 @@
 'use client'
 
+import React from 'react'
 import { Bell, Search, User, Settings, Crown } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Button } from '../ui/button'
+import { Input } from '../ui/input'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -212,35 +213,30 @@ export function DashboardHeader({ type, userName = 'Utilisateur', userEmail = 'u
           {/* Notifications */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative text-orange-700 hover:bg-orange-100/50 hover:text-orange-800 transition-all hover:scale-105 active:scale-95"
               >
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="relative text-orange-700 hover:bg-orange-100/50 hover:text-orange-800 transition-all"
+                <motion.div
+                  animate={{ rotate: [0, -10, 10, -10, 0] }}
+                  transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 3 }}
                 >
-                  <motion.div
-                    animate={{ rotate: [0, -10, 10, -10, 0] }}
-                    transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 3 }}
+                  <Bell className="h-5 w-5" />
+                </motion.div>
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                >
+                  <Badge
+                    variant="destructive"
+                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
                   >
-                    <Bell className="h-5 w-5" />
-                  </motion.div>
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 15 }}
-                  >
-                    <Badge
-                      variant="destructive"
-                      className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                    >
-                      3
-                    </Badge>
-                  </motion.div>
-                </Button>
-              </motion.div>
+                    3
+                  </Badge>
+                </motion.div>
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80">
               <DropdownMenuLabel>Notifications</DropdownMenuLabel>

@@ -44,16 +44,55 @@ import { useOffres } from '@/lib/hooks/useOffres'
 import { ChatInterface } from '@/components/messaging/ChatInterface'
 import { CreateOffreForm } from '@/components/offres/CreateOffreForm'
 import Image from 'next/image'
+import { useLocale } from 'next-intl'
+import { usePathname, useRouter } from '@/i18n/routing'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { 
+  getPrestataireConversations, 
+  getMessagesForConversation,
+  type MockMessage 
+} from '@/lib/mock-messaging-data'
 
 export default function PrestataireDashboardPage() {
   const [activeSection, setActiveSection] = useState('overview')
   const [logoImage, setLogoImage] = useState<string | null>(null)
   const [showCreateOffreForm, setShowCreateOffreForm] = useState(false)
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
+  const [localMessages, setLocalMessages] = useState<MockMessage[]>([])
+  const pathname = usePathname()
+  const router = useRouter()
+  const locale = useLocale()
 
   // Récupérer les données utilisateur depuis l'API
   const { user, loading: authLoading } = useAuth()
   const { reservations, loading: reservationsLoading } = useReservations()
   const { offres, loading: offresLoading } = useOffres({ isActive: true })
+
+  const getLocaleLabel = (loc: string) => {
+    switch (loc) {
+      case 'fr':
+        return '🇫🇷 FR'
+      case 'en':
+        return '🇬🇧 EN'
+      case 'ar':
+        return '🇸🇦 AR'
+      case 'es':
+        return '🇪🇸 ES'
+      case 'pt':
+        return '🇵🇹 PT'
+      case 'de':
+        return '🇩🇪 DE'
+      case 'it':
+        return '🇮🇹 IT'
+      default:
+        return '🌐'
+    }
+  }
 
   // Données utilisateur depuis l'API
   const userData = useMemo(() => ({
@@ -122,6 +161,52 @@ export default function PrestataireDashboardPage() {
         statut: 'paid',
       }))
   }, [reservations])
+
+  // Données fictives pour la messagerie
+  const conversations = useMemo(() => {
+    return getPrestataireConversations(user?.id || 'prestataire-current')
+  }, [user?.id])
+
+  const messages = useMemo(() => {
+    if (!selectedConversationId) return []
+    const conversation = conversations.find(c => c.id === selectedConversationId)
+    if (!conversation) return []
+    
+    return getMessagesForConversation(
+      selectedConversationId,
+      user?.id || 'prestataire-current',
+      conversation.user.id,
+      conversation.name
+    )
+  }, [selectedConversationId, conversations, user?.id])
+
+  const handleSendMessage = (content: string, conversationId: string) => {
+    const conversation = conversations.find(c => c.id === conversationId)
+    if (!conversation) return
+
+    const newMessage: MockMessage = {
+      id: `msg-${Date.now()}`,
+      content,
+      senderId: user?.id || 'prestataire-current',
+      senderName: 'Vous',
+      timestamp: new Date(),
+      isRead: false,
+      isFromUser: true,
+    }
+
+    setLocalMessages(prev => [...prev, newMessage])
+  }
+
+  const handleSelectConversation = (conversationId: string) => {
+    setSelectedConversationId(conversationId)
+    setLocalMessages([])
+  }
+
+  const allMessages = useMemo(() => {
+    return [...messages, ...localMessages].sort((a, b) => 
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    )
+  }, [messages, localMessages])
 
   const loading = authLoading || reservationsLoading || offresLoading
 
@@ -699,17 +784,13 @@ export default function PrestataireDashboardPage() {
               <Card className="hover:shadow-lg transition-shadow duration-300 border-0 shadow-xl">
                 <CardContent className="p-0">
                   <ChatInterface
-                    currentUserId={user?.id || ''}
+                    currentUserId={user?.id || 'prestataire-current'}
+                    conversations={conversations}
+                    messages={allMessages}
                     emptyStateTitle="Aucun message"
                     emptyStateDescription="Vos conversations avec les clients apparaîtront ici"
-                    onSendMessage={(content, conversationId) => {
-                      // TODO: Implémenter l'envoi de message
-                      console.log('Envoi message:', content, conversationId)
-                    }}
-                    onSelectConversation={(conversationId) => {
-                      // TODO: Charger les messages de la conversation
-                      console.log('Sélection conversation:', conversationId)
-                    }}
+                    onSendMessage={handleSendMessage}
+                    onSelectConversation={handleSelectConversation}
                   />
                 </CardContent>
               </Card>
@@ -1397,6 +1478,42 @@ export default function PrestataireDashboardPage() {
                     <div className="space-y-2">
                       <Label htmlFor="telephone">Téléphone</Label>
                       <Input id="telephone" type="tel" defaultValue="+221 77 123 45 67" />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="langue">Langue</Label>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" className="w-full justify-between">
+                            <span className="flex items-center gap-2">
+                              <span className="text-lg">🌐</span>
+                              <span>{getLocaleLabel(locale as string)}</span>
+                            </span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-full">
+                          <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'fr' })}>
+                            🇫🇷 Français
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'en' })}>
+                            🇬🇧 English
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'ar' })}>
+                            🇸🇦 العربية
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'es' })}>
+                            🇪🇸 Español
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'it' })}>
+                            🇮🇹 Italiano
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'pt' })}>
+                            🇵🇹 Português
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'de' })}>
+                            🇩🇪 Deutsch
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                   <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>

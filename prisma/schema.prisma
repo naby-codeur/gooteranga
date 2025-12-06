@@ -126,6 +126,7 @@ model User {
   likes         Like[]
   prestataire   Prestataire?
   notifications Notification[]
+  depenses      Depense[]
 
   @@unique([email, role]) // Un email peut avoir un compte USER et un compte PRESTATAIRE
   @@index([email])
@@ -499,4 +500,35 @@ model ReferralEvent {
 
   @@index([referralId])
   @@index([type])
+}
+
+// Enum pour les catégories de dépenses
+enum DepenseCategorie {
+  HEBERGEMENT
+  RESTAURATION
+  TRANSPORT
+  ACTIVITE
+  SHOPPING
+  AUTRE
+}
+
+// Modèle Depense (Dépenses manuelles ajoutées par les touristes)
+model Depense {
+  id            String           @id @default(cuid())
+  userId        String
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  titre         String
+  description   String?          @db.Text
+  categorie     DepenseCategorie
+  montant       Decimal          @db.Decimal(10, 2)
+  date          DateTime         @default(now())
+  lieu          String? // Lieu où la dépense a été effectuée
+  methode       String? // Méthode de paiement (espèces, carte, mobile money, etc.)
+  isHorsPlateforme Boolean       @default(true) // Indique que c'est une dépense hors Gooteranga
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([categorie])
+  @@index([date])
 }

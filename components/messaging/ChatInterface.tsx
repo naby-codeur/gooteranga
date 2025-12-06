@@ -18,9 +18,13 @@ import {
   Video,
   Check,
   CheckCheck,
-  Clock
+  Clock,
+  Mic,
+  Play,
+  Pause
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { VoiceRecorder } from './VoiceRecorder'
 
 interface Message {
   id: string
@@ -31,6 +35,9 @@ interface Message {
   timestamp: Date
   isRead: boolean
   isFromUser: boolean
+  isVoiceMessage?: boolean
+  voiceUrl?: string
+  voiceDuration?: number
 }
 
 interface Conversation {
@@ -41,13 +48,19 @@ interface Conversation {
   timestamp: Date
   unreadCount: number
   isOnline?: boolean
+  user?: {
+    nom: string
+    prenom: string
+    email: string
+    telephone: string
+  }
 }
 
 interface ChatInterfaceProps {
   conversations?: Conversation[]
   messages?: Message[]
   currentUserId: string
-  onSendMessage?: (content: string, conversationId: string) => void
+  onSendMessage?: (content: string, conversationId: string, audioBlob?: Blob, duration?: number) => void
   onSelectConversation?: (conversationId: string) => void
   emptyStateTitle?: string
   emptyStateDescription?: string
@@ -65,7 +78,10 @@ export function ChatInterface({
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null)
   const [messageInput, setMessageInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false)
+  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const voiceAudioRefs = useRef<Map<string, HTMLAudioElement>>(new Map())
 
   const filteredConversations = conversations.filter(conv =>
     conv.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -85,6 +101,20 @@ export function ChatInterface({
     if (messageInput.trim() && selectedConversation && onSendMessage) {
       onSendMessage(messageInput, selectedConversation)
       setMessageInput('')
+    }
+  }
+
+  const handleSendVoiceMessage = (audioBlob: Blob, duration: number) => {
+    if (selectedConversation && onSendMessage) {
+      // Convert blob to base64 or create a URL
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        // For now, we'll send a placeholder text and the blob
+        // In a real app, you'd upload the blob to a server and send the URL
+        onSendMessage(`🎤 Message vocal (${Math.floor(duration)}s)`, selectedConversation, audioBlob, duration)
+      }
+      reader.readAsDataURL(audioBlob)
+      setShowVoiceRecorder(false)
     }
   }
 
@@ -184,20 +214,26 @@ export function ChatInterface({
             {/* Header de la conversation */}
             <div className="p-4 border-b bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-950/20 dark:to-yellow-950/20 backdrop-blur-sm">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-1">
                   <Avatar className="h-10 w-10 ring-2 ring-orange-200 dark:ring-orange-800">
                     <AvatarImage src={selectedConv.avatar} />
                     <AvatarFallback className="bg-gradient-to-br from-orange-400 to-yellow-400 text-white">
                       {selectedConv.name.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <div>
-                    <h3 className="font-semibold">{selectedConv.name}</h3>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold truncate">{selectedConv.name}</h3>
                     {selectedConv.isOnline && (
                       <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
                         <span className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
                         En ligne
                       </p>
+                    )}
+                    {selectedConv.user && (
+                      <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
+                        <p className="truncate">📧 {selectedConv.user.email}</p>
+                        <p className="truncate">📱 {selectedConv.user.telephone}</p>
+                      </div>
                     )}
                   </div>
                 </div>
