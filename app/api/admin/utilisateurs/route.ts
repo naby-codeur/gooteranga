@@ -128,7 +128,7 @@ export async function PATCH(request: NextRequest) {
           },
         },
       },
-    })
+    }) as { role: string; prestataire?: { id: string } | null } | null
 
     if (!user) {
       return errorResponse('Utilisateur non trouvé', 404)

@@ -50,6 +50,7 @@ const prestataireItems: SidebarItem[] = [
   { id: 'overview', label: 'Vue d\'ensemble', icon: LayoutDashboard, emoji: '📊' },
   { id: 'offres', label: 'Mes offres', icon: Plus, emoji: '🎯' },
   { id: 'reservations', label: 'Réservations', icon: Calendar, emoji: '📅' },
+  { id: 'messages', label: 'Messages', icon: MessageSquare, emoji: '💬' },
   { id: 'abonnements', label: 'Abonnement', icon: DollarSign, emoji: '💳' },
   { id: 'boosts', label: 'Boosts', icon: TrendingUp, emoji: '🚀' },
   { id: 'revenus', label: 'Revenus', icon: DollarSign, emoji: '💰' },

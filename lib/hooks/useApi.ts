@@ -1,6 +1,34 @@
 'use client'
 
 /**
+ * Normalise une URL pour s'assurer qu'elle est absolue et non affectée par la locale
+ */
+function normalizeApiUrl(url: string): string {
+  // Si l'URL commence déjà par http:// ou https://, la retourner telle quelle
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url
+  }
+  
+  // S'assurer que l'URL commence par /
+  if (!url.startsWith('/')) {
+    url = '/' + url
+  }
+  
+  // Pour TOUTES les routes API, utiliser une URL absolue pour éviter les problèmes avec i18n
+  // Cela garantit que l'URL n'est pas résolue par rapport à la locale courante dans le navigateur
+  if (url.startsWith('/api/')) {
+    if (typeof window !== 'undefined') {
+      // Utiliser l'origine complète pour garantir que l'URL n'est pas affectée par la locale
+      return window.location.origin + url
+    }
+    // En SSR, retourner l'URL telle quelle (le serveur ne devrait pas avoir ce problème)
+    return url
+  }
+  
+  return url
+}
+
+/**
  * Fonction utilitaire pour faire des appels API avec gestion d'erreur robuste
  */
 export async function apiFetch<T = unknown>(
@@ -8,12 +36,22 @@ export async function apiFetch<T = unknown>(
   options: RequestInit = {}
 ): Promise<{ success: boolean; data?: T; error?: string; status?: number }> {
   try {
-    const response = await fetch(url, {
+    // Normaliser l'URL pour éviter les problèmes avec les locales i18n
+    const normalizedUrl = normalizeApiUrl(url)
+    
+    // Log pour déboguer
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[apiFetch] Making request to:', normalizedUrl)
+    }
+    
+    const response = await fetch(normalizedUrl, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
         ...options.headers,
       },
+      credentials: 'include', // Inclure les cookies pour l'authentification
     })
 
     // Vérifier le statut HTTP
@@ -23,13 +61,31 @@ export async function apiFetch<T = unknown>(
     const contentType = response.headers.get('content-type')
     const isJson = contentType && contentType.includes('application/json')
 
-    // Si ce n'est pas du JSON, retourner une erreur
+    // Si ce n'est pas du JSON, retourner une erreur avec plus de détails
     if (!isJson) {
       const text = await response.text()
-      console.error('Non-JSON response:', text.substring(0, 200))
+      console.error('[apiFetch] Non-JSON response detected:', {
+        originalUrl: url,
+        normalizedUrl: normalizedUrl,
+        status,
+        statusText: response.statusText,
+        contentType,
+        responsePreview: text.substring(0, 500),
+        fullUrl: response.url,
+      })
+      
+      // Si c'est une erreur 404, suggérer que la route n'existe pas
+      if (status === 404) {
+        return {
+          success: false,
+          error: `Route API non trouvée (404). Vérifiez que la route ${normalizedUrl} existe.`,
+          status,
+        }
+      }
+      
       return {
         success: false,
-        error: `La réponse n'est pas du JSON (status: ${status})`,
+        error: `La réponse n'est pas du JSON (status: ${status}). URL: ${normalizedUrl}`,
         status,
       }
     }

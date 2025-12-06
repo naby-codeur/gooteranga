@@ -1,13 +1,12 @@
 // Authentification désactivée pour le développement - retourne des utilisateurs fictifs
 
-import { NextRequest } from 'next/server'
 import { successResponse } from '@/lib/api/response'
 
 /**
  * GET /api/auth/session
  * Récupère la session actuelle de l'utilisateur (mode développement: utilisateur fictif)
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   // Mode développement: retourner un utilisateur fictif
   // Le hook useAuth déterminera le type d'utilisateur selon l'URL côté client
   

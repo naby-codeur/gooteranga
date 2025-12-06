@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { Link } from '@/i18n/routing'
-import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Star, MapPin, Clock, Users, Waves, ArrowLeft } from 'lucide-react'
+import { Star, MapPin, Waves, Fish, Hotel, ArrowLeft, ArrowRight } from 'lucide-react'
 import Image from 'next/image'
 
 export default function PlagesIlesPage() {
@@ -16,53 +16,132 @@ export default function PlagesIlesPage() {
     const interval = setInterval(() => {
       setCurrentBgIndex((prev) => (prev + 1) % backgroundImages.length)
     }, 5000)
-    return () => clearInterval(interval)
+    return () => {
+      clearInterval(interval)
+    }
   }, [backgroundImages.length])
 
-  // Exemple d'offres - À remplacer par des données réelles depuis la base de données
-  const offres = [
+  // Top 5 plages
+  const topPlages = [
     {
       id: 1,
-      titre: 'Excursion Île de Gorée',
-      description: 'Découvrez l\'île historique de Gorée, site classé au patrimoine mondial de l\'UNESCO',
-      prix: '15000',
-      lieu: 'Gorée, Dakar',
-      duree: '4h',
-      capacite: '20 personnes',
-      rating: 4.9,
+      nom: 'Plage de N\'Gor',
+      region: 'Dakar',
+      description: 'Magnifique plage avec eaux turquoise, idéale pour le surf et la détente',
       image: '/images/ba1.png',
-      prestataire: 'Dakar Tours'
+      rating: 4.9,
+      activites: ['Surf', 'Baignade', 'Détente']
     },
     {
       id: 2,
-      titre: 'Plage de N\'Gor',
-      description: 'Profitez des magnifiques plages de N\'Gor avec activités nautiques',
-      prix: '8000',
-      lieu: 'N\'Gor, Dakar',
-      duree: '6h',
-      capacite: '15 personnes',
-      rating: 4.7,
+      nom: 'Plage de Saly',
+      region: 'Thiès',
+      description: 'Station balnéaire populaire avec de nombreux hôtels et activités nautiques',
       image: '/images/ba2.png',
-      prestataire: 'Senegal Beach'
+      rating: 4.8,
+      activites: ['Jet-ski', 'Voile', 'Plongée']
     },
     {
       id: 3,
-      titre: 'Îles de la Madeleine',
-      description: 'Excursion vers les îles de la Madeleine, réserve naturelle',
-      prix: '20000',
-      lieu: 'Dakar',
-      duree: '8h',
-      capacite: '12 personnes',
-      rating: 4.8,
+      nom: 'Plage de Somone',
+      region: 'Thiès',
+      description: 'Plage tranquille avec lagune, parfaite pour les familles',
       image: '/images/ba3.png',
-      prestataire: 'Nature Tours'
+      rating: 4.7,
+      activites: ['Kayak', 'Pêche', 'Observation oiseaux']
+    },
+    {
+      id: 4,
+      nom: 'Plage de Toubab Dialaw',
+      region: 'Thiès',
+      description: 'Plage sauvage et authentique, paradis des surfeurs',
+      image: '/images/ba4.png',
+      rating: 4.8,
+      activites: ['Surf', 'Randonnée', 'Yoga']
+    },
+    {
+      id: 5,
+      nom: 'Plage de Cap Skirring',
+      region: 'Casamance',
+      description: 'L\'une des plus belles plages d\'Afrique de l\'Ouest',
+      image: '/images/ba5.png',
+      rating: 4.9,
+      activites: ['Baignade', 'Pêche', 'Détente']
+    },
+  ]
+
+  // Îles incontournables
+  const iles = [
+    {
+      id: 1,
+      nom: 'Île de Gorée',
+      description: 'Site classé au patrimoine mondial de l\'UNESCO, témoin de l\'histoire de la traite des esclaves',
+      image: '/images/ba6.png',
+      coordonnees: { lat: 14.6700, lng: -17.4000 },
+      rating: 4.9
+    },
+    {
+      id: 2,
+      nom: 'Île de N\'Gor',
+      description: 'Petite île pittoresque accessible en pirogue depuis la plage de N\'Gor',
+      image: '/images/ba7.png',
+      coordonnees: { lat: 14.7500, lng: -17.5167 },
+      rating: 4.7
+    },
+    {
+      id: 3,
+      nom: 'Île aux Oiseaux (Delta du Saloum)',
+      description: 'Réserve ornithologique exceptionnelle dans le delta du Saloum',
+      image: '/images/ba8.png',
+      coordonnees: { lat: 13.7500, lng: -16.5000 },
+      rating: 4.8
+    },
+    {
+      id: 4,
+      nom: 'Îles de la Madeleine',
+      description: 'Réserve naturelle protégée, paradis pour les oiseaux marins',
+      image: '/images/ba9.png',
+      coordonnees: { lat: 14.6667, lng: -17.4667 },
+      rating: 4.6
+    },
+  ]
+
+  // Activités
+  const activites = [
+    {
+      id: 1,
+      nom: 'Surf',
+      description: 'Profitez des vagues de l\'Atlantique sur les meilleurs spots du Sénégal',
+      icon: Waves,
+      couleur: 'bg-blue-500'
+    },
+    {
+      id: 2,
+      nom: 'Kayak',
+      description: 'Explorez les lagunes et mangroves en kayak',
+      icon: Waves,
+      couleur: 'bg-cyan-500'
+    },
+    {
+      id: 3,
+      nom: 'Pêche',
+      description: 'Partez en pêche avec les pêcheurs locaux',
+      icon: Fish,
+      couleur: 'bg-teal-500'
+    },
+    {
+      id: 4,
+      nom: 'Plongée',
+      description: 'Découvrez les fonds marins et la vie sous-marine',
+      icon: Waves, // Replace with another valid icon
+      couleur: 'bg-indigo-500'
     },
   ]
 
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <section className="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
+      <section className="relative min-h-[70vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0">
           {backgroundImages.map((image, index) => (
             <div
@@ -73,8 +152,8 @@ export default function PlagesIlesPage() {
               style={{ backgroundImage: `url(${image})` }}
             />
           ))}
-          <div className="absolute inset-0 bg-gradient-to-br from-cap-blue/30 via-nature-green/20 to-cap-blue/30 z-10"></div>
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent z-10"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-cap-blue/40 via-nature-green/20 to-cap-blue/40 z-10"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent z-10"></div>
         </div>
 
         <div className="container relative z-20 mx-[10%] py-24">
@@ -106,80 +185,173 @@ export default function PlagesIlesPage() {
         </div>
       </section>
 
-      {/* Offres Section */}
+      {/* Section Top 5 Plages */}
       <section className="mx-[10%] py-16 md:py-24">
         <div className="mb-12">
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl mb-4">
-            Nos offres
+            Top 5 Plages
           </h2>
           <p className="text-lg text-muted-foreground">
-            Explorez toutes les offres de nos prestataires pour découvrir les plages et îles du Sénégal
+            Les plus belles plages du Sénégal sélectionnées pour vous
           </p>
         </div>
 
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {offres.map((offre) => (
-            <Card key={offre.id} className="overflow-hidden group hover:shadow-xl transition-all duration-300">
-              <div className="relative h-64 bg-cap-blue">
+          {topPlages.map((plage, index) => (
+            <Card key={plage.id} className="overflow-hidden group hover:shadow-xl transition-all duration-300 border-2 hover:border-cap-blue">
+              <div className="relative h-64">
                 <Image
-                  src={offre.image}
-                  alt={offre.titre}
+                  src={plage.image}
+                  alt={plage.nom}
                   fill
                   className="object-cover group-hover:scale-110 transition-transform duration-500"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
-                <Badge className="absolute top-4 right-4 bg-white text-cap-blue">
-                  {offre.prix} FCFA
+                <Badge className="absolute top-4 left-4 bg-cap-blue text-white">
+                  #{index + 1}
                 </Badge>
                 <div className="absolute bottom-0 left-0 right-0 p-4">
-                  <h3 className="text-xl font-bold text-white mb-1">{offre.titre}</h3>
-                  <div className="flex items-center gap-2 text-white/90 text-sm">
+                  <h3 className="text-xl font-bold text-white mb-1">{plage.nom}</h3>
+                  <div className="flex items-center gap-2 text-white/90 text-sm mb-2">
                     <MapPin className="h-4 w-4" />
-                    {offre.lieu}
+                    {plage.region}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    <span className="text-sm font-medium text-white">{plage.rating}</span>
                   </div>
                 </div>
               </div>
               <CardHeader>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-1">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <span className="text-sm font-medium">{offre.rating}</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">Par {offre.prestataire}</span>
+                <CardDescription className="text-base">{plage.description}</CardDescription>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {plage.activites.map((activite, idx) => (
+                    <Badge key={idx} variant="outline" className="text-xs">
+                      {activite}
+                    </Badge>
+                  ))}
                 </div>
-                <CardDescription className="text-base">{offre.description}</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    {offre.duree}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Users className="h-4 w-4" />
-                    {offre.capacite}
-                  </div>
-                </div>
-                <Button asChild className="w-full bg-cap-blue hover:bg-cap-blue/90 text-white">
-                  <Link href={`/experience/${offre.id}`}>
-                    Voir les détails
-                  </Link>
-                </Button>
-              </CardContent>
             </Card>
           ))}
         </div>
+      </section>
 
-        {offres.length === 0 && (
-          <div className="text-center py-12">
-            <Waves className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+      {/* Section Îles Incontournables */}
+      <section className="bg-muted/50 py-16 md:py-24">
+        <div className="mx-[10%]">
+          <div className="mb-12">
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl mb-4">
+              Îles Incontournables
+            </h2>
             <p className="text-lg text-muted-foreground">
-              Aucune offre disponible pour le moment
+              Découvrez les îles emblématiques du Sénégal, chacune avec son histoire et sa beauté unique
             </p>
           </div>
-        )}
+
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            {iles.map((ile) => (
+              <Card key={ile.id} className="overflow-hidden group hover:shadow-xl transition-all duration-300">
+                <div className="relative h-80">
+                  <Image
+                    src={ile.image}
+                    alt={ile.nom}
+                    fill
+                    className="object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
+                  <div className="absolute bottom-0 left-0 right-0 p-6">
+                    <h3 className="text-2xl font-bold text-white mb-2">{ile.nom}</h3>
+                    <p className="text-white/90 mb-4">{ile.description}</p>
+                    <div className="flex items-center gap-2">
+                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                      <span className="text-sm font-medium text-white">{ile.rating}</span>
+                    </div>
+                  </div>
+                </div>
+                <CardContent className="p-6">
+                  <Button asChild variant="outline" className="w-full border-cap-blue text-cap-blue hover:bg-cap-blue hover:text-white">
+                    <Link href={`/explorer?destination=${ile.nom.toLowerCase().replace(/\s+/g, '-')}`}>
+                      Voir les offres
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Section Activités */}
+      <section className="mx-[10%] py-16 md:py-24">
+        <div className="mb-12">
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl mb-4">
+            Activités Nautiques
+          </h2>
+          <p className="text-lg text-muted-foreground">
+            Profitez d&apos;une multitude d&apos;activités au bord de l&apos;océan
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {activites.map((activite) => {
+            const Icon = activite.icon
+            return (
+              <Card key={activite.id} className="overflow-hidden group hover:shadow-xl transition-all duration-300 text-center">
+                <div className={`${activite.couleur} h-32 flex items-center justify-center`}>
+                  <Icon className="h-16 w-16 text-white" />
+                </div>
+                <CardHeader>
+                  <CardTitle className="text-xl">{activite.nom}</CardTitle>
+                  <CardDescription>{activite.description}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button asChild variant="outline" className="w-full">
+                    <Link href={`/explorer?activite=${activite.nom.toLowerCase()}`}>
+                      Découvrir
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      </section>
+
+      {/* Section Hébergement */}
+      <section className="bg-gradient-to-br from-cap-blue/10 to-nature-green/10 py-16 md:py-24">
+        <div className="mx-[10%]">
+          <div className="mb-12 text-center">
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl mb-4">
+              Hébergement près des Plages
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Trouvez le logement parfait pour votre séjour au bord de la mer
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <Button asChild size="lg" className="bg-cap-blue hover:bg-cap-blue/90 text-white text-lg px-8 py-6 h-auto">
+              <Link href="/hebergements?type=hotel&region=plage">
+                <Hotel className="mr-2 h-5 w-5" />
+                Hôtels & Résidences
+              </Link>
+            </Button>
+            <Button asChild size="lg" variant="outline" className="border-cap-blue text-cap-blue hover:bg-cap-blue hover:text-white text-lg px-8 py-6 h-auto">
+              <Link href="/hebergements?type=auberge&region=plage">
+                Auberges & Guesthouses
+              </Link>
+            </Button>
+            <Button asChild size="lg" variant="outline" className="border-cap-blue text-cap-blue hover:bg-cap-blue hover:text-white text-lg px-8 py-6 h-auto">
+              <Link href="/explorer?type=hebergement&activite=PLAGE">
+                Voir toutes les offres
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Link>
+            </Button>
+          </div>
+        </div>
       </section>
     </div>
   )
 }
-

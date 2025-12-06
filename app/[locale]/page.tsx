@@ -14,13 +14,14 @@ import {
   UtensilsCrossed,
   Trees,
   Landmark,
-  UserCheck,
+  ShoppingBag,
   Shield,
   Globe,
   CheckCircle2,
   ArrowRight,
   Sun,
-  Building
+  Building,
+  UserCheck
 } from 'lucide-react'
 
 export default function HomePage() {
@@ -178,11 +179,11 @@ export default function HomePage() {
       href: '/monuments-histoire'
     },
     {
-      icon: UserCheck,
-      title: 'Guides locaux certifiés',
-      description: 'Vivez des expériences avec des guides experts',
+      icon: ShoppingBag,
+      title: 'Marché artisanal',
+      description: 'Découvrez l\'artisanat local et les produits authentiques',
       color: 'bg-gooteranga-orange-gradient',
-      href: '/guides'
+      href: '/marche-artisanal'
     },
   ]
 

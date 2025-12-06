@@ -14,11 +14,18 @@ const nextConfig: NextConfig = {
   },
   // Corriger les problèmes de source maps
   productionBrowserSourceMaps: false,
-  // Désactiver les source maps en développement pour éviter les erreurs de parsing
-  webpack: (config, { dev }) => {
-    if (dev) {
-      config.devtool = false;
+  // Désactiver complètement les source maps pour éviter les erreurs de parsing
+  webpack: (config, { dev, isServer }) => {
+    // Désactiver les source maps en développement et production
+    config.devtool = false;
+    
+    // Ignorer les warnings de source maps
+    if (config.ignoreWarnings) {
+      config.ignoreWarnings.push(/Failed to parse source map/);
+    } else {
+      config.ignoreWarnings = [/Failed to parse source map/];
     }
+    
     return config;
   },
 };

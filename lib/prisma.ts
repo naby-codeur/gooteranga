@@ -1,5 +1,6 @@
 // Type pour le client Prisma mock
 type MockPrismaClient = {
+  $transaction(arg0: Promise<unknown>[]): unknown
   user: {
     findUnique: (args: unknown) => Promise<unknown>
     findMany: () => Promise<unknown[]>
@@ -77,6 +78,9 @@ type MockPrismaClient = {
 // Note: En mode mock, nous retournons simplement les valeurs passées pour create/update
 // et null pour findUnique pour éviter de créer des utilisateurs fantômes
 const mockPrismaClient: MockPrismaClient = {
+  $transaction: async (operations: Promise<unknown>[]) => {
+    return Promise.all(operations);
+  },
   user: {
     findUnique: async () => null,
     findMany: async () => [],

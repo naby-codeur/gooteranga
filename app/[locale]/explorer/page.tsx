@@ -2,14 +2,16 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from '@/i18n/routing'
-import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Star, MapPin, Filter, Search, Calendar, Users, Clock, Compass, Sparkles, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react'
-import Image from 'next/image'
+import { Filter, Search, Calendar, Users, Clock, Compass, Sparkles, ArrowLeft, Loader2 } from 'lucide-react'
 import { useOffres } from '@/lib/hooks/useOffres'
+import { ThemeFilters, matchesThemes } from '@/components/filters/ThemeFilters'
+import { OfferCard } from '@/components/offers/OfferCard'
+import { Pagination } from '@/components/ui/pagination'
 
 const activites = [
   { value: 'CULTURE', label: 'Culture' },
@@ -56,6 +58,9 @@ export default function ExplorerPage() {
   })
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
   const [sortBy, setSortBy] = useState('popularity')
+  const [selectedThemes, setSelectedThemes] = useState<string[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 12
 
   const backgroundImages = Array.from({ length: 10 }, (_, i) => `/images/ba${i + 1}.png`)
 
@@ -67,18 +72,43 @@ export default function ExplorerPage() {
   }, [backgroundImages.length])
 
   // Utiliser le hook useOffres pour récupérer les offres depuis l'API
-  const { offres, loading, error, refetch } = useOffres({
+  const { offres, loading, error, refetch, pagination } = useOffres({
     region: filters.region || undefined,
     type: filters.type || undefined,
     minPrix: filters.budgetMin || undefined,
     maxPrix: filters.budgetMax || undefined,
     isActive: true,
     search: searchQuery || undefined,
+    page: currentPage,
+    limit: itemsPerPage,
   })
 
-  // Transformer les offres en expériences pour l'affichage
-  const experiences = useMemo(() => {
-    const sorted = [...offres]
+  // Réinitialiser à la page 1 quand les filtres changent
+  const filtersKey = `${filters.region}-${filters.type}-${filters.activite}-${filters.budgetMin}-${filters.budgetMax}-${searchQuery}-${selectedThemes.join(',')}`
+  
+  useEffect(() => {
+    if (currentPage !== 1) {
+      setCurrentPage(1)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtersKey])
+
+  // Transformer les offres en expériences pour l'affichage avec filtrage par thèmes
+  const { experiences, totalFiltered } = useMemo(() => {
+    // Filtrer par thèmes si des thèmes sont sélectionnés
+    let filtered = [...offres]
+    
+    if (selectedThemes.length > 0) {
+      filtered = filtered.filter(offre => {
+        // Récupérer les tags de l'offre
+        const offreTags = offre.tags || []
+        return matchesThemes(offreTags, selectedThemes)
+      })
+    }
+    
+    const totalFiltered = filtered.length
+    
+    const sorted = [...filtered]
     
     // Trier selon le critère sélectionné
     switch (sortBy) {
@@ -98,21 +128,56 @@ export default function ExplorerPage() {
         break
     }
 
-    return sorted.map(offre => ({
+    // Pagination côté client si filtrage par thèmes
+    const startIndex = selectedThemes.length > 0 ? (currentPage - 1) * itemsPerPage : 0
+    const endIndex = selectedThemes.length > 0 ? startIndex + itemsPerPage : sorted.length
+    const paginated = sorted.slice(startIndex, endIndex)
+
+    return {
+      experiences: paginated.map(offre => ({
       id: offre.id,
       titre: offre.titre,
       description: offre.description,
       prix: Number(offre.prix),
-      lieu: `${offre.ville}, ${offre.region}`,
+      prixUnite: offre.prixUnite,
+      lieu: `${offre.ville || ''}, ${offre.region || ''}`.replace(/^,\s*|,\s*$/g, ''),
+      region: offre.region,
+      ville: offre.ville,
       duree: offre.duree ? `${offre.duree}h` : 'N/A',
       capacite: offre.capacite ? `${offre.capacite} personnes` : 'N/A',
       rating: offre.rating || 0,
+      nombreAvis: offre._count?.avis || 0,
+      nombreLikes: offre._count?.likes || offre.nombreLikes || 0,
+      vuesVideo: offre.vuesVideo || 0,
       image: offre.images && offre.images.length > 0 ? offre.images[0] : '/images/ba1.png',
-      prestataire: offre.prestataire.nomEntreprise,
+      videos: offre.videos || [],
+      prestataire: {
+        nomEntreprise: offre.prestataire.nomEntreprise,
+        logo: offre.prestataire.logo,
+      },
       activite: offre.type,
       typePublic: 'Tous',
-    }))
-  }, [offres, sortBy])
+      tags: offre.tags || [],
+    })),
+      totalFiltered
+    }
+  }, [offres, sortBy, selectedThemes, currentPage, itemsPerPage])
+
+  // Calculer la pagination réelle
+  const actualPagination = useMemo(() => {
+    if (selectedThemes.length > 0) {
+      // Pagination côté client
+      return {
+        page: currentPage,
+        limit: itemsPerPage,
+        total: totalFiltered,
+        totalPages: Math.ceil(totalFiltered / itemsPerPage)
+      }
+    } else {
+      // Pagination côté serveur
+      return pagination
+    }
+  }, [selectedThemes.length, currentPage, itemsPerPage, totalFiltered, pagination])
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -276,6 +341,14 @@ export default function ExplorerPage() {
               </Button>
             </div>
 
+            {/* Filtres par thèmes */}
+            <Card className="p-6 bg-white/95 backdrop-blur shadow-xl border-2 border-teranga-orange/20">
+              <ThemeFilters
+                selectedThemes={selectedThemes}
+                onThemesChange={setSelectedThemes}
+              />
+            </Card>
+
             {/* Filtres avancés */}
             {showAdvancedFilters && (
               <Card className="p-6 bg-white/95 backdrop-blur shadow-xl border-2 border-teranga-orange/20">
@@ -365,7 +438,15 @@ export default function ExplorerPage() {
               Nos expériences
             </h2>
             <p className="text-lg text-muted-foreground">
-              {experiences.length} expériences uniques vous attendent
+              {actualPagination.total > 0 
+                ? `${actualPagination.total} expérience${actualPagination.total > 1 ? 's' : ''} trouvée${actualPagination.total > 1 ? 's' : ''}`
+                : 'Aucune expérience trouvée'
+              }
+              {actualPagination.totalPages > 1 && (
+                <span className="ml-2 text-sm">
+                  (Page {currentPage} sur {actualPagination.totalPages})
+                </span>
+              )}
             </p>
           </div>
           <Select value={sortBy} onValueChange={setSortBy}>
@@ -400,65 +481,52 @@ export default function ExplorerPage() {
           <>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {experiences.map((exp) => (
-                <Card key={exp.id} className="overflow-hidden group hover:shadow-xl transition-all duration-300 border-2 hover:border-teranga-orange">
-                  <div className="relative h-64 bg-teranga-orange">
-                    <Image
-                      src={exp.image}
-                      alt={exp.titre}
-                      fill
-                      className="object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
-                    <Badge className="absolute top-4 right-4 bg-white text-teranga-orange border-teranga-orange">
-                      {exp.prix.toLocaleString()} FCFA
-                    </Badge>
-                    <div className="absolute bottom-0 left-0 right-0 p-4">
-                      <h3 className="text-xl font-bold text-white mb-1">{exp.titre}</h3>
-                      <div className="flex items-center gap-2 text-white/90 text-sm">
-                        <MapPin className="h-4 w-4" />
-                        {exp.lieu}
-                      </div>
-                    </div>
-                  </div>
-                  <CardHeader>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-1">
-                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                        <span className="text-sm font-medium">{exp.rating.toFixed(1)}</span>
-                      </div>
-                      <span className="text-xs text-muted-foreground">Par {exp.prestataire}</span>
-                    </div>
-                    <CardDescription className="text-base">{exp.description}</CardDescription>
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      <Badge variant="secondary" className="text-xs bg-teranga-orange/10 text-teranga-orange border-teranga-orange/20">
-                        {exp.activite}
-                      </Badge>
-                      <Badge variant="secondary" className="text-xs bg-cap-blue/10 text-cap-blue border-cap-blue/20">
-                        {exp.typePublic}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        {exp.duree}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        {exp.capacite}
-                      </div>
-                    </div>
-                    <Button asChild className="w-full bg-teranga-orange hover:bg-[#FFD700] text-white font-semibold">
-                      <Link href={`/experience/${exp.id}`}>
-                        Voir les détails
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
-                    </Button>
-                  </CardContent>
-                </Card>
+                <OfferCard
+                  key={exp.id}
+                  id={exp.id}
+                  titre={exp.titre}
+                  description={exp.description}
+                  prix={exp.prix}
+                  prixUnite={exp.prixUnite}
+                  image={exp.image}
+                  videos={exp.videos}
+                  rating={exp.rating}
+                  nombreAvis={exp.nombreAvis}
+                  nombreLikes={exp.nombreLikes}
+                  vuesVideo={exp.vuesVideo}
+                  prestataire={exp.prestataire}
+                  lieu={exp.lieu}
+                  region={exp.region}
+                  ville={exp.ville}
+                  onToggleFavorite={(offreId) => {
+                    // TODO: Implémenter l'API pour ajouter/retirer des favoris
+                    console.log('Toggle favorite:', offreId)
+                  }}
+                  onToggleLike={(offreId) => {
+                    // TODO: Implémenter l'API pour ajouter/retirer des likes
+                    console.log('Toggle like:', offreId)
+                  }}
+                  onShare={(offreId) => {
+                    console.log('Share:', offreId)
+                  }}
+                />
               ))}
             </div>
+
+            {/* Pagination */}
+            {actualPagination.totalPages > 1 && (
+              <div className="mt-12">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={actualPagination.totalPages}
+                  onPageChange={(page) => {
+                    setCurrentPage(page)
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                  }}
+                  showInfo={true}
+                />
+              </div>
+            )}
 
             {experiences.length === 0 && (
               <div className="text-center py-12">

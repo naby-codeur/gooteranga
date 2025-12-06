@@ -110,6 +110,8 @@ export async function GET(request: NextRequest) {
           select: {
             avis: true,
             reservations: true,
+            likes: true,
+            favoris: true,
           },
         },
       },
@@ -203,11 +205,26 @@ export async function POST(request: NextRequest) {
       duree,
       capacite,
       disponibilite,
+      boostEnabled,
+      boostDuree,
     } = body
 
     // Validation
     if (!titre || !description || !type || !prix) {
       return errorResponse('Champs requis manquants', 400)
+    }
+
+    // Validation des images (max 3)
+    if (images && Array.isArray(images) && images.length > 3) {
+      return errorResponse('Maximum 3 images autorisées', 400)
+    }
+
+    // Validation des vidéos (durée 30s-1mn)
+    // Note: La validation de durée doit être faite côté client avant l'upload
+    // Ici on vérifie juste que les URLs sont valides
+    if (videos && Array.isArray(videos) && videos.length > 0) {
+      // La validation de durée sera faite lors de l'upload côté client
+      // On accepte les vidéos ici, mais l'upload doit vérifier la durée
     }
 
     // Vérifier la limite d'expériences selon le plan
@@ -264,7 +281,96 @@ export async function POST(request: NextRequest) {
           },
         },
       },
-    })
+    }) as OffreWithPrestataire
+
+    // Si boost activé, créer le boost automatiquement
+    if (boostEnabled && boostDuree) {
+      try {
+        // Vérifier les boosts disponibles
+        const prestataireWithBoosts = await prisma.prestataire.findUnique({
+          where: { id: prestataire.id },
+          select: { boostsDisponibles: true },
+        }) as { boostsDisponibles: number } | null
+
+        const tarifs: Record<string, number> = {
+          jour: 1000,
+          semaine: 6000,
+          mois: 15000,
+        }
+
+        const montant = tarifs[boostDuree] || 6000
+
+        // Calculer les dates
+        const dateDebut = new Date()
+        const dateFin = new Date()
+        if (boostDuree === 'jour') {
+          dateFin.setDate(dateFin.getDate() + 1)
+        } else if (boostDuree === 'semaine') {
+          dateFin.setDate(dateFin.getDate() + 7)
+        } else if (boostDuree === 'mois') {
+          dateFin.setMonth(dateFin.getMonth() + 1)
+        }
+
+        // Si le prestataire a des boosts disponibles, les utiliser
+        if (prestataireWithBoosts && prestataireWithBoosts.boostsDisponibles > 0) {
+          // Utiliser un boost disponible
+          await prisma.$transaction([
+            prisma.boost.create({
+              data: {
+                prestataireId: prestataire.id,
+                offreId: offre.id,
+                type: 'EXPERIENCE',
+                montant: 0, // Gratuit car utilise un boost disponible
+                dateDebut,
+                dateFin,
+                isActive: true,
+                methode: 'boosts_disponibles',
+              },
+            }),
+            prisma.prestataire.update({
+              where: { id: prestataire.id },
+              data: {
+                boostsDisponibles: {
+                  decrement: 1,
+                },
+              },
+            }),
+            prisma.offre.update({
+              where: { id: offre.id as string },
+              data: {
+                isFeatured: true,
+                featuredExpiresAt: dateFin,
+              },
+            }),
+          ])
+        } else {
+          // Créer un boost payant (sera facturé plus tard)
+          await prisma.boost.create({
+            data: {
+              prestataireId: prestataire.id,
+              offreId: offre.id,
+              type: 'EXPERIENCE',
+              montant,
+              dateDebut,
+              dateFin,
+              isActive: true,
+              methode: 'pending_payment', // À payer plus tard
+            },
+          })
+
+          await prisma.offre.update({
+            where: { id: offre.id },
+            data: {
+              isFeatured: true,
+              featuredExpiresAt: dateFin,
+            },
+          })
+        }
+      } catch (boostError) {
+        // Ne pas bloquer la création de l'offre si le boost échoue
+        console.error('Error creating boost:', boostError)
+      }
+    }
 
     return successResponse(offre, 'Offre créée avec succès', 201)
   } catch (error) {

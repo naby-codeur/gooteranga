@@ -123,6 +123,7 @@ model User {
   favoris       Favori[]
   messages      Message[]
   avis          Avis[]
+  likes         Like[]
   prestataire   Prestataire?
   notifications Notification[]
 
@@ -153,6 +154,10 @@ model Prestataire {
   solde         Decimal         @default(0) @db.Decimal(10, 2)
   rating        Float           @default(0)
   nombreAvis    Int             @default(0)
+  // Système de parrainage
+  codeParrain   String          @unique // Code unique pour le parrainage (ex: GT-ABCD1234)
+  points        Int             @default(0) // Points accumulés via le parrainage
+  boostsDisponibles Int         @default(0) // Boosts disponibles (convertis depuis les points)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
@@ -165,10 +170,13 @@ model Prestataire {
   notifications Notification[]
   abonnements   Abonnement[]
   boosts        Boost[]
+  referralsParrain Referral[]   @relation("Parrain") // Parrainages où ce prestataire est le parrain
+  referralsFilleul Referral[]   @relation("Filleul") // Parrainages où ce prestataire est le filleul
 
   @@index([type])
   @@index([isVerified])
   @@index([planType])
+  @@index([codeParrain])
 }
 
 // Modèle Offre
@@ -190,6 +198,7 @@ model Offre {
   prixUnite         String? // "par nuit", "par personne", "par groupe"
   images            String[] // URLs des images
   videos            String[] // URLs des vidéos
+  vuesVideo         Int                 @default(0) // Nombre de vues pour les vidéos
   duree             Int? // Durée en heures
   dureeMin          Int? // Durée minimale en heures
   dureeMax          Int? // Durée maximale en heures
@@ -197,6 +206,7 @@ model Offre {
   disponibilite     Json? // Calendrier de disponibilité
   activites         ActiviteCategorie[] // Catégories d'activités
   typesPublic       TypePublic[] // Types de public ciblés
+  tags              String[] // Mots-clés pour classifier l'offre (ex: "musée", "plage", "gastronomie", "écotourisme")
   activitesProches  Json? // Activités/offres proches (localisation)
   rating            Float               @default(0)
   nombreAvis        Int                 @default(0)
@@ -211,6 +221,7 @@ model Offre {
   reservations Reservation[]
   avis         Avis[]
   favoris      Favori[]
+  likes        Like[]
   boosts       Boost[]
 
   @@index([prestataireId])
@@ -256,7 +267,7 @@ model Paiement {
   prestataireId   String
   prestataire     Prestataire   @relation(fields: [prestataireId], references: [id], onDelete: Cascade)
   montant         Decimal       @db.Decimal(10, 2) // Montant total (100% pour le prestataire, pas de commission)
-  methode         String // "stripe", "cinetpay", "om", "wave", "free_money"
+  methode         String // "stripe", "cinetpay", "om", "wave", "free_money", "carte_bancaire"
   transactionId   String?       @unique
   statut          PaymentStatus @default(PENDING)
   stripePaymentId String?
@@ -299,6 +310,20 @@ model Favori {
 
   @@unique([userId, offreId])
   @@index([userId])
+}
+
+// Modèle Like
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  offreId   String
+  offre     Offre    @relation(fields: [offreId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, offreId])
+  @@index([userId])
+  @@index([offreId])
 }
 
 // Modèle Message
@@ -420,4 +445,58 @@ model Boost {
   @@index([type])
   @@index([isActive])
   @@index([dateFin])
+}
+
+// Enum pour les statuts de parrainage
+enum ReferralStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+// Enum pour les types d'événements de parrainage
+enum ReferralEventType {
+  INSCRIPTION_VALIDEE
+  PREMIERE_OFFRE_PUBLIEE
+  RESERVATION_EFFECTUEE
+  ABONNEMENT_PREMIUM
+}
+
+// Modèle Referral (Parrainage)
+model Referral {
+  id                String            @id @default(cuid())
+  parrainId         String // Prestataire qui a parrainé
+  parrain           Prestataire        @relation("Parrain", fields: [parrainId], references: [id], onDelete: Cascade)
+  filleulId         String // Prestataire parrainé
+  filleul           Prestataire        @relation("Filleul", fields: [filleulId], references: [id], onDelete: Cascade)
+  statut            ReferralStatus    @default(PENDING)
+  pointsGagnes      Int               @default(0) // Points gagnés par le parrain grâce à ce filleul
+  codeUtilise       String? // Code parrain utilisé lors de l'inscription
+  ipAddress         String? // IP de l'inscription (anti-fraude)
+  userAgent         String? // User agent (anti-fraude)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  // Événements de parrainage
+  evenements        ReferralEvent[]
+
+  @@unique([parrainId, filleulId]) // Un prestataire ne peut être parrainé qu'une fois par le même parrain
+  @@index([parrainId])
+  @@index([filleulId])
+  @@index([statut])
+  @@index([codeUtilise])
+}
+
+// Modèle ReferralEvent (Événements de parrainage)
+model ReferralEvent {
+  id          String            @id @default(cuid())
+  referralId  String
+  referral    Referral           @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  type        ReferralEventType
+  points      Int // Points gagnés pour cet événement
+  metadata    Json? // Données supplémentaires (ex: ID de l'offre, ID de la réservation)
+  createdAt   DateTime          @default(now())
+
+  @@index([referralId])
+  @@index([type])
 }

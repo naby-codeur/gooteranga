@@ -20,6 +20,7 @@ export interface Offre {
   rating: number
   isActive: boolean
   isFeatured: boolean
+  tags?: string[] // Tags pour classifier l'offre
   prestataire: {
     id: string
     nomEntreprise: string
@@ -27,9 +28,13 @@ export interface Offre {
     isVerified: boolean
     rating: number
   }
+  vuesVideo?: number
+  nombreLikes?: number
   _count: {
     avis: number
     reservations: number
+    likes?: number
+    favoris?: number
   }
   createdAt: string
 }

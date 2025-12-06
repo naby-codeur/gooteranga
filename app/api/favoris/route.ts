@@ -118,3 +118,32 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * DELETE /api/favoris?offreId=xxx
+ * Retire une offre des favoris
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    const user = await requireAuth(request)
+    const searchParams = request.nextUrl.searchParams
+    const offreId = searchParams.get('offreId')
+
+    if (!offreId) {
+      return errorResponse('ID d\'offre requis', 400)
+    }
+
+    await prisma.favori.delete({
+      where: {
+        userId_offreId: {
+          userId: user.id,
+          offreId,
+        },
+      },
+    })
+
+    return successResponse(null, 'Offre retirée des favoris', 200)
+  } catch (error) {
+    return handleApiError(error)
+  }
+}
+

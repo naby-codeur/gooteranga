@@ -26,6 +26,7 @@ import {
   Zap,
   CheckCircle,
   XCircle,
+  X,
   Clock,
   Loader2,
 } from 'lucide-react'
@@ -40,11 +41,14 @@ import { LineChart, BarChart, DoughnutChart } from '@/components/ui/charts'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useReservations } from '@/lib/hooks/useReservations'
 import { useOffres } from '@/lib/hooks/useOffres'
+import { ChatInterface } from '@/components/messaging/ChatInterface'
+import { CreateOffreForm } from '@/components/offres/CreateOffreForm'
 import Image from 'next/image'
 
 export default function PrestataireDashboardPage() {
   const [activeSection, setActiveSection] = useState('overview')
   const [logoImage, setLogoImage] = useState<string | null>(null)
+  const [showCreateOffreForm, setShowCreateOffreForm] = useState(false)
 
   // Récupérer les données utilisateur depuis l'API
   const { user, loading: authLoading } = useAuth()
@@ -444,29 +448,64 @@ export default function PrestataireDashboardPage() {
               transition={{ duration: 0.3 }}
               className="space-y-4"
             >
-              <motion.div 
-                className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-              >
-                <div>
-                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
-                    Mes offres 🎯
-                  </h2>
-                  <p className="text-muted-foreground">
-                    Gérez vos offres et services
-                  </p>
-                </div>
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button className="w-full sm:w-auto">
-                <Plus className="h-4 w-4 mr-2" />
-                Ajouter une offre
-              </Button>
-            </motion.div>
-          </motion.div>
+              {showCreateOffreForm ? (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Créer une nouvelle offre</CardTitle>
+                        <CardDescription>
+                          Remplissez le formulaire pour créer votre offre
+                        </CardDescription>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setShowCreateOffreForm(false)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <CreateOffreForm
+                      onSuccess={() => {
+                        setShowCreateOffreForm(false)
+                        // Recharger les offres
+                        window.location.reload()
+                      }}
+                      onCancel={() => setShowCreateOffreForm(false)}
+                    />
+                  </CardContent>
+                </Card>
+              ) : (
+                <>
+                  <motion.div 
+                    className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4 }}
+                  >
+                    <div>
+                      <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
+                        Mes offres 🎯
+                      </h2>
+                      <p className="text-muted-foreground">
+                        Gérez vos offres et services
+                      </p>
+                    </div>
+                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                      <Button 
+                        className="w-full sm:w-auto"
+                        onClick={() => setShowCreateOffreForm(true)}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Ajouter une offre
+                      </Button>
+                    </motion.div>
+                  </motion.div>
 
-          {loading ? (
+                  {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
@@ -541,6 +580,8 @@ export default function PrestataireDashboardPage() {
               ))}
             </div>
           )}
+                </>
+              )}
             </motion.div>
           )}
 
@@ -643,6 +684,35 @@ export default function PrestataireDashboardPage() {
               )}
             </CardContent>
           </Card>
+            </motion.div>
+          )}
+
+          {activeSection === 'messages' && (
+            <motion.div 
+              key="messages"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-4"
+            >
+              <Card className="hover:shadow-lg transition-shadow duration-300 border-0 shadow-xl">
+                <CardContent className="p-0">
+                  <ChatInterface
+                    currentUserId={user?.id || ''}
+                    emptyStateTitle="Aucun message"
+                    emptyStateDescription="Vos conversations avec les clients apparaîtront ici"
+                    onSendMessage={(content, conversationId) => {
+                      // TODO: Implémenter l'envoi de message
+                      console.log('Envoi message:', content, conversationId)
+                    }}
+                    onSelectConversation={(conversationId) => {
+                      // TODO: Charger les messages de la conversation
+                      console.log('Sélection conversation:', conversationId)
+                    }}
+                  />
+                </CardContent>
+              </Card>
             </motion.div>
           )}
 

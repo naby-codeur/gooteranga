@@ -41,6 +41,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { LineChart, BarChart, DoughnutChart } from '@/components/ui/charts'
+import { ChatInterface } from '@/components/messaging/ChatInterface'
 
 // Types pour les données
 interface Prestataire {
@@ -1520,29 +1521,21 @@ export default function AdminDashboardPage() {
                     </p>
                   </div>
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Messages de support</CardTitle>
-                      <CardDescription>5 messages non lus</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                          <div className="flex items-start justify-between mb-2">
-                            <div>
-                              <h4 className="font-semibold">Problème de réservation</h4>
-                              <p className="text-sm text-muted-foreground">Jean Dupont • Il y a 2 heures</p>
-                            </div>
-                            <Badge variant="secondary">Non lu</Badge>
-                          </div>
-                          <p className="text-sm mt-2">
-                            Bonjour, j&apos;ai un problème avec ma réservation #1234...
-                          </p>
-                          <Button variant="outline" size="sm" className="mt-3">
-                            Voir et répondre
-                          </Button>
-                        </div>
-                      </div>
+                  <Card className="hover:shadow-lg transition-shadow duration-300 border-0 shadow-xl">
+                    <CardContent className="p-0">
+                      <ChatInterface
+                        currentUserId="admin"
+                        emptyStateTitle="Aucun message de support"
+                        emptyStateDescription="Les messages de support des utilisateurs et prestataires apparaîtront ici"
+                        onSendMessage={(content, conversationId) => {
+                          // TODO: Implémenter l'envoi de message de support
+                          console.log('Envoi message support:', content, conversationId)
+                        }}
+                        onSelectConversation={(conversationId) => {
+                          // TODO: Charger les messages de la conversation de support
+                          console.log('Sélection conversation support:', conversationId)
+                        }}
+                      />
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -1663,6 +1656,10 @@ export default function AdminDashboardPage() {
                         </div>
                         <div className="flex items-center justify-between">
                           <span>Wave</span>
+                          <Badge variant="default">Actif</Badge>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Carte bancaire</span>
                           <Badge variant="default">Actif</Badge>
                         </div>
                         <div className="flex items-center justify-between">

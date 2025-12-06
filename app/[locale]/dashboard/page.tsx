@@ -27,6 +27,7 @@ import Image from 'next/image'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useReservations } from '@/lib/hooks/useReservations'
 import { useFavoris } from '@/lib/hooks/useFavoris'
+import { ChatInterface } from '@/components/messaging/ChatInterface'
 
 export default function DashboardPage() {
   const [activeSection, setActiveSection] = useState('overview')
@@ -773,21 +774,23 @@ export default function DashboardPage() {
               transition={{ duration: 0.3 }}
               className="space-y-4"
             >
-          <Card className="hover:shadow-lg transition-shadow duration-300">
-            <CardHeader>
-              <CardTitle>Messagerie</CardTitle>
-              <CardDescription>Discutez avec les prestataires</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-12">
-                <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Aucun message</h3>
-                <p className="text-muted-foreground">
-                  Vos conversations avec les prestataires apparaîtront ici
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+              <Card className="hover:shadow-lg transition-shadow duration-300 border-0 shadow-xl">
+                <CardContent className="p-0">
+                  <ChatInterface
+                    currentUserId={user?.id || ''}
+                    emptyStateTitle="Aucun message"
+                    emptyStateDescription="Vos conversations avec les prestataires apparaîtront ici"
+                    onSendMessage={(content, conversationId) => {
+                      // TODO: Implémenter l'envoi de message
+                      console.log('Envoi message:', content, conversationId)
+                    }}
+                    onSelectConversation={(conversationId) => {
+                      // TODO: Charger les messages de la conversation
+                      console.log('Sélection conversation:', conversationId)
+                    }}
+                  />
+                </CardContent>
+              </Card>
             </motion.div>
           )}
 
