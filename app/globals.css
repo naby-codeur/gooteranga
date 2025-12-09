@@ -289,4 +289,34 @@
     width: max-content;
     will-change: transform;
   }
+  
+  /* Animation de brillance pour le texte */
+  @keyframes shimmer {
+    0% {
+      background-position: -200% center;
+    }
+    100% {
+      background-position: 200% center;
+    }
+  }
+  
+  .animate-shimmer {
+    background-size: 200% auto;
+    animation: shimmer 3s linear infinite;
+  }
+  
+  /* Dégradé vert-jaune-rouge avec animation brillante */
+  .text-rainbow-gradient {
+    background: linear-gradient(90deg, 
+      #22c55e 0%, 
+      #2CAF73 20%, 
+      #FFD700 40%, 
+      #FFC342 50%, 
+      #FFD700 60%, 
+      #ef4444 80%, 
+      #dc2626 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
 }

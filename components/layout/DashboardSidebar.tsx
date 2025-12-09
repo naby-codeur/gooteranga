@@ -117,7 +117,7 @@ export function DashboardSidebar({ type, activeSection, onSectionChange }: Dashb
       <motion.aside
         initial={false}
         animate={{
-          width: isCollapsed ? 80 : 256,
+          width: isCollapsed ? 100 : 256,
         }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         className={cn(

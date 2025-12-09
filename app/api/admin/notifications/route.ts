@@ -9,7 +9,18 @@ import { successResponse, errorResponse } from '@/lib/api/response'
  */
 export async function GET(request: NextRequest) {
   try {
-    await requireRole('ADMIN', request)
+    // Vérifier l'authentification et le rôle
+    try {
+      await requireRole('ADMIN', request)
+    } catch (authError) {
+      // Si l'authentification échoue, retourner une erreur 403
+      if (authError instanceof Error) {
+        if (authError.message === 'Unauthorized' || authError.message === 'Forbidden') {
+          return errorResponse(authError.message, 403)
+        }
+      }
+      return errorResponse('Unauthorized', 403)
+    }
 
     // Récupérer toutes les notifications, triées par date de création (plus récentes en premier)
     const notifications = (await prisma.notification.findMany({

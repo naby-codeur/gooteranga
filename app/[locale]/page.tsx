@@ -29,8 +29,20 @@ export default function HomePage() {
   const [categoryImageIndices, setCategoryImageIndices] = useState<Record<number, number>>({})
   const [featuredDestinationIndex, setFeaturedDestinationIndex] = useState(0)
   
-  // Images de fond pour le carrousel
-  const backgroundImages = Array.from({ length: 10 }, (_, i) => `/images/ba${i + 1}.png`)
+
+  // Images de fond pour le carrousel (ba1 à ba10)
+  const backgroundImages = [
+    '/images/ba1.jpg',
+    '/images/ba2.jpg',
+    '/images/ba3.webp',
+    '/images/ba4.jpg',
+    '/images/ba5.jpg',
+    '/images/ba6.jpg',
+    '/images/ba7.jpeg',
+    '/images/ba8.jpg',
+    '/images/ba9.jpg',
+    '/images/ba10.jpg',
+  ]
 
   // Carrousel automatique des images de fond (hero)
   useEffect(() => {
@@ -193,31 +205,40 @@ export default function HomePage() {
   return (
     <div className="flex flex-col">
       {/* Section 1: Hero – Immersion directe */}
-      <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
+      <section className="relative min-h-[90vh] w-full flex items-center justify-center overflow-hidden">
         {/* Carrousel d'images de fond */}
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 w-full h-full">
           {backgroundImages.map((image, index) => (
             <div
               key={index}
-              className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out ${
+              className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ease-in-out ${
                 index === currentBgIndex ? 'opacity-100 z-0' : 'opacity-0 z-0'
               }`}
               style={{
                 backgroundImage: `url(${image})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center center',
+                backgroundRepeat: 'no-repeat',
+                width: '100%',
+                height: '100%',
+                minHeight: '100%',
               }}
             />
           ))}
+          {/* Overlay sombre pour améliorer la lisibilité */}
+          <div className="absolute inset-0 bg-black/50 z-10"></div>
           {/* Overlay gradient léger - Nature (vert) & Plage/Cours d'eau (bleu) */}
           <div className="absolute inset-0 bg-gradient-to-br from-nature-green/20 via-cap-blue/15 to-nature-green/20 z-10"></div>
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/20 to-transparent z-10"></div>
+          {/* Overlay gradient du bas vers le haut pour le texte */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-black/20 z-10"></div>
         </div>
 
         <div className="container relative z-20 py-24 md:py-32">
           <div className="mx-auto max-w-4xl text-center">
-            <h1 className="text-5xl font-bold tracking-tight text-white sm:text-6xl md:text-7xl lg:text-8xl animate-fade-in">
-              Explorer le Sénégal
-              <br />
-              <span className="text-gooteranga-gradient bg-clip-text bg-gradient-to-r from-[#FFD700] to-[#FFC342]">
+            <h1 className="text-5xl font-bold tracking-tight sm:text-6xl md:text-7xl lg:text-8xl animate-fade-in">
+              <span className="text-rainbow-gradient animate-shimmer">
+                Explorer le Sénégal
+                <br />
                 autrement
               </span>
             </h1>

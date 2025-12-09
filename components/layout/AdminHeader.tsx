@@ -98,8 +98,22 @@ export function AdminHeader({ userName = 'Admin', userEmail = 'admin@gooteranga.
   const loadNotifications = useCallback(async () => {
     setLoadingNotifications(true)
     try {
-      const response = await fetch('/api/admin/notifications')
+      const response = await fetch('/api/admin/notifications', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Inclure les cookies pour l'authentification
+      })
+      
       if (!response.ok) {
+        // Si c'est une erreur 403 ou 401, c'est probablement un problème d'authentification
+        if (response.status === 401 || response.status === 403) {
+          console.warn('Accès non autorisé aux notifications (peut être normal en développement)')
+          setNotifications([])
+          setUnreadCount(0)
+          return
+        }
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       
@@ -114,9 +128,21 @@ export function AdminHeader({ userName = 'Admin', userEmail = 'admin@gooteranga.
       if (data.success) {
         setNotifications(data.data.notifications || [])
         setUnreadCount(data.data.unreadCount || 0)
+      } else {
+        // Si la réponse indique un échec mais n'est pas une erreur HTTP
+        console.warn('Réponse API indique un échec:', data.message || 'Erreur inconnue')
+        setNotifications([])
+        setUnreadCount(0)
       }
     } catch (error) {
-      console.error('Erreur lors du chargement des notifications:', error)
+      // Gérer différents types d'erreurs
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        console.warn('Impossible de se connecter à l\'API (peut être normal si le serveur n\'est pas démarré)')
+      } else if (error instanceof Error) {
+        console.error('Erreur lors du chargement des notifications:', error.message)
+      } else {
+        console.error('Erreur inconnue lors du chargement des notifications:', error)
+      }
       // Ne pas bloquer l'interface en cas d'erreur
       setNotifications([])
       setUnreadCount(0)
