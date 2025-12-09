@@ -2,6 +2,11 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse, handleApiError } from '@/lib/api/response'
 import { requireRole } from '@/lib/api/auth'
+import Stripe from 'stripe'
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2025-11-17.clover',
+})
 
 // Types pour les résultats Prisma
 type PrestataireWithAbonnements = {
@@ -79,13 +84,13 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/abonnements
- * Crée un nouvel abonnement
+ * Crée un nouvel abonnement (avec Stripe Billing si méthode = 'stripe', sinon paiement cash)
  */
 export async function POST(request: NextRequest) {
   try {
     const user = await requireRole('PRESTATAIRE', request)
     const body = await request.json()
-    const { planType, methode, transactionId, stripeSubscriptionId } = body
+    const { planType, methode, transactionId } = body
 
     if (!planType || !['PRO', 'PREMIUM'].includes(planType)) {
       return errorResponse('Plan invalide. Choisissez PRO ou PREMIUM', 400)
@@ -98,11 +103,15 @@ export async function POST(request: NextRequest) {
     }
 
     const montant = tarifs[planType as 'PRO' | 'PREMIUM']
+    const paymentMethod = methode || 'stripe'
 
     // Récupérer le prestataire
     const prestataire = await prisma.prestataire.findUnique({
       where: { userId: user.id },
-    }) as Prestataire | null
+      include: {
+        user: true,
+      },
+    }) as Prestataire & { user: { email: string } } | null
 
     if (!prestataire) {
       return errorResponse('Prestataire non trouvé', 404)
@@ -113,32 +122,106 @@ export async function POST(request: NextRequest) {
     const dateFin = new Date()
     dateFin.setMonth(dateFin.getMonth() + 1)
 
-    // Créer l'abonnement
-    const abonnement = await prisma.abonnement.create({
-      data: {
-        prestataireId: prestataire.id,
-        planType,
-        montant,
-        dateDebut,
-        dateFin,
-        statut: 'ACTIVE',
-        methode: methode || 'stripe',
-        transactionId,
-        stripeSubscriptionId,
-        autoRenouvellement: true,
-      },
-    }) as Abonnement
+    let stripeSubscriptionId: string | null = null
+    let statut: 'ACTIVE' | 'PENDING' = 'ACTIVE'
 
-    // Mettre à jour le prestataire
-    await prisma.prestataire.update({
-      where: { id: prestataire.id },
-      data: {
-        planType,
-        planExpiresAt: dateFin,
-      },
-    })
+    // Si paiement via Stripe Billing
+    if (paymentMethod === 'stripe') {
+      // Créer un produit Stripe pour le plan
+      const product = await stripe.products.create({
+        name: `Abonnement ${planType} - GooTeranga`,
+        description: `Plan ${planType} pour prestataire`,
+        metadata: {
+          planType,
+          prestataireId: prestataire.id,
+        },
+      })
 
-    return successResponse(abonnement, 'Abonnement créé avec succès', 201)
+      // Créer un prix récurrent (mensuel)
+      const price = await stripe.prices.create({
+        product: product.id,
+        unit_amount: Math.round(montant * 100), // Convertir en centimes
+        currency: 'xof',
+        recurring: {
+          interval: 'month',
+        },
+        metadata: {
+          planType,
+          prestataireId: prestataire.id,
+        },
+      })
+
+      // Créer une session Checkout pour l'abonnement
+      // Stripe Checkout supporte automatiquement : Visa, Mastercard, AMEX, Apple Pay, Google Pay
+      const checkoutSession = await stripe.checkout.sessions.create({
+        mode: 'subscription',
+        customer_email: prestataire.user.email || user.email,
+        line_items: [
+          {
+            price: price.id,
+            quantity: 1,
+          },
+        ],
+        payment_method_types: ['card'], // Supporte Visa, Mastercard, AMEX
+        // Apple Pay et Google Pay sont automatiquement activés si configurés dans Stripe Dashboard
+        success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/prestataire?subscription=success`,
+        cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/prestataire?subscription=cancel`,
+        metadata: {
+          prestataireId: prestataire.id,
+          planType,
+          userId: user.id,
+        },
+        subscription_data: {
+          metadata: {
+            prestataireId: prestataire.id,
+            planType,
+            userId: user.id,
+          },
+        },
+      })
+
+      // Retourner l'URL de checkout (l'abonnement sera créé après le paiement via webhook)
+      return successResponse({
+        checkoutUrl: checkoutSession.url,
+        checkoutSessionId: checkoutSession.id,
+        paymentMethods: ['visa', 'mastercard', 'amex', 'apple_pay', 'google_pay'],
+        message: 'Redirigez l\'utilisateur vers l\'URL de checkout pour finaliser l\'abonnement',
+      })
+    }
+
+    // Si paiement cash, créer directement l'abonnement
+    if (paymentMethod === 'cash') {
+      if (!transactionId) {
+        return errorResponse('transactionId requis pour le paiement cash', 400)
+      }
+
+      const abonnement = await prisma.abonnement.create({
+        data: {
+          prestataireId: prestataire.id,
+          planType,
+          montant,
+          dateDebut,
+          dateFin,
+          statut: 'ACTIVE',
+          methode: 'cash',
+          transactionId,
+          autoRenouvellement: false, // Pas de renouvellement automatique pour le cash
+        },
+      }) as Abonnement
+
+      // Mettre à jour le prestataire
+      await prisma.prestataire.update({
+        where: { id: prestataire.id },
+        data: {
+          planType,
+          planExpiresAt: dateFin,
+        },
+      })
+
+      return successResponse(abonnement, 'Abonnement créé avec succès (paiement cash)', 201)
+    }
+
+    return errorResponse('Méthode de paiement non supportée. Utilisez "stripe" ou "cash"', 400)
   } catch (error) {
     return handleApiError(error)
   }
@@ -167,7 +250,30 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (action === 'cancel') {
-      // Annuler l'abonnement
+      // Récupérer l'abonnement actif
+      const abonnementActif = await prisma.abonnement.findFirst({
+        where: {
+          prestataireId: prestataire.id,
+          statut: 'ACTIVE',
+        },
+        orderBy: { createdAt: 'desc' },
+      }) as Abonnement & { stripeSubscriptionId: string | null } | null
+
+      if (!abonnementActif) {
+        return errorResponse('Aucun abonnement actif trouvé', 404)
+      }
+
+      // Si c'est un abonnement Stripe, l'annuler côté Stripe
+      if (abonnementActif.stripeSubscriptionId) {
+        try {
+          await stripe.subscriptions.cancel(abonnementActif.stripeSubscriptionId)
+        } catch (error) {
+          console.error('Error canceling Stripe subscription:', error)
+          // Continuer quand même avec l'annulation dans la base de données
+        }
+      }
+
+      // Annuler l'abonnement dans la base de données
       await prisma.abonnement.updateMany({
         where: {
           prestataireId: prestataire.id,

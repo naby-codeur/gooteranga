@@ -1,30 +1,37 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
-import { Briefcase, Globe } from 'lucide-react'
+import { Briefcase, Globe, Gift, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { getDashboardPath, type UserRole } from '@/lib/utils/auth'
 
 type AccountType = 'USER' | 'PRESTATAIRE'
 
 // Type temporaire jusqu'à ce que Prisma soit régénéré
-type PrestataireType = 'HOTEL' | 'GUIDE' | 'AGENCE' | 'RESTAURANT' | 'ARTISAN' | 'ASSOCIATION' | 'AUBERGE' | 'TRANSPORT' | 'AUTRE'
+type PrestataireType = 'HOTEL' | 'RESIDENCE' | 'AUBERGE' | 'TRANSPORT' | 'GUIDE' | 'AGENCE' | 'RESTAURANT' | 'ARTISAN' | 'ASSOCIATION' | 'AUTRE'
 
 export default function SignupPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, loading: authLoading, signOut } = useAuth()
   const [accountType, setAccountType] = useState<AccountType>('USER')
   const [step, setStep] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [codeParrain, setCodeParrain] = useState('')
+  const [codeParrainValid, setCodeParrainValid] = useState<boolean | null>(null)
+  const [validatingCode, setValidatingCode] = useState(false)
+  const [parrainInfo, setParrainInfo] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     prenom: '',
     nom: '',
@@ -43,6 +50,64 @@ export default function SignupPage() {
     region: '',
     description: '',
   })
+
+  // Vérifier le paramètre ref dans l'URL
+  useEffect(() => {
+    const ref = searchParams.get('ref')
+    if (ref && accountType === 'PRESTATAIRE') {
+      setCodeParrain(ref.toUpperCase())
+      validateCodeParrain(ref.toUpperCase())
+    }
+  }, [searchParams, accountType])
+
+  const validateCodeParrain = async (code: string) => {
+    if (!code || code.trim() === '') {
+      setCodeParrainValid(null)
+      setParrainInfo(null)
+      return
+    }
+
+    // Format validation: GT-XXXX1234
+    if (!/^GT-[A-Z0-9]{8}$/.test(code)) {
+      setCodeParrainValid(false)
+      setParrainInfo('Format invalide. Format attendu: GT-XXXX1234')
+      return
+    }
+
+    setValidatingCode(true)
+    try {
+      const response = await fetch(`/api/referrals/code?code=${encodeURIComponent(code)}`)
+      const data = await response.json()
+
+      if (data.success && data.data.valide) {
+        setCodeParrainValid(true)
+        setParrainInfo(`Parrain: ${data.data.parrain.nomEntreprise}`)
+      } else {
+        setCodeParrainValid(false)
+        setParrainInfo(data.error || 'Code parrain invalide')
+      }
+    } catch (error) {
+      setCodeParrainValid(false)
+      setParrainInfo('Erreur lors de la validation')
+    } finally {
+      setValidatingCode(false)
+    }
+  }
+
+  const handleCodeParrainChange = (value: string) => {
+    const upperValue = value.toUpperCase()
+    setCodeParrain(upperValue)
+    if (upperValue.trim() === '') {
+      setCodeParrainValid(null)
+      setParrainInfo(null)
+    } else {
+      // Debounce validation
+      const timeoutId = setTimeout(() => {
+        validateCodeParrain(upperValue)
+      }, 500)
+      return () => clearTimeout(timeoutId)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -107,6 +172,7 @@ export default function SignupPage() {
             ville: formData.ville || null,
             region: formData.region || null,
             description: formData.description || null,
+            codeParrain: codeParrain && codeParrainValid ? codeParrain : null,
           }),
         }),
       })
@@ -175,13 +241,14 @@ export default function SignupPage() {
 
   const prestataireTypes: { value: PrestataireType; label: string }[] = [
     { value: 'HOTEL', label: 'Hôtel' },
+    { value: 'RESIDENCE', label: 'Résidence' },
+    { value: 'AUBERGE', label: 'Auberge' },
+    { value: 'TRANSPORT', label: 'Transport' },
     { value: 'GUIDE', label: 'Guide touristique' },
     { value: 'AGENCE', label: 'Agence de voyage' },
     { value: 'RESTAURANT', label: 'Restaurant' },
     { value: 'ARTISAN', label: 'Artisan' },
     { value: 'ASSOCIATION', label: 'Association' },
-    { value: 'AUBERGE', label: 'Auberge' },
-    { value: 'TRANSPORT', label: 'Transport' },
     { value: 'AUTRE', label: 'Autre' },
   ]
 
@@ -481,6 +548,62 @@ export default function SignupPage() {
                       value={formData.description}
                       onChange={(e) => handleChange('description', e.target.value)}
                     />
+                  </div>
+
+                  {/* Champ Code Parrain */}
+                  <div className="space-y-2">
+                    <Label htmlFor="codeParrain" className="flex items-center gap-2">
+                      <Gift className="h-4 w-4 text-orange-500" />
+                      Code Parrain (optionnel)
+                    </Label>
+                    <div className="space-y-2">
+                      <div className="relative">
+                        <Input
+                          id="codeParrain"
+                          placeholder="GT-XXXX1234"
+                          value={codeParrain}
+                          onChange={(e) => handleCodeParrainChange(e.target.value)}
+                          maxLength={12}
+                          className={`pr-10 ${
+                            codeParrainValid === true
+                              ? 'border-green-500 focus:ring-green-500'
+                              : codeParrainValid === false
+                              ? 'border-red-500 focus:ring-red-500'
+                              : ''
+                          }`}
+                        />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          {validatingCode ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          ) : codeParrainValid === true ? (
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                          ) : codeParrainValid === false ? (
+                            <XCircle className="h-4 w-4 text-red-500" />
+                          ) : null}
+                        </div>
+                      </div>
+                      {parrainInfo && (
+                        <div
+                          className={`text-xs p-2 rounded-md flex items-center gap-2 ${
+                            codeParrainValid === true
+                              ? 'bg-green-50 text-green-700 border border-green-200'
+                              : 'bg-red-50 text-red-700 border border-red-200'
+                          }`}
+                        >
+                          {codeParrainValid === true ? (
+                            <CheckCircle className="h-3 w-3" />
+                          ) : (
+                            <XCircle className="h-3 w-3" />
+                          )}
+                          <span>{parrainInfo}</span>
+                        </div>
+                      )}
+                      {codeParrain && codeParrainValid === null && (
+                        <p className="text-xs text-muted-foreground">
+                          Entrez le code parrain d&apos;un autre prestataire pour gagner des points
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </>
               )}

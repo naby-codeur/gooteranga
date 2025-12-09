@@ -93,13 +93,14 @@ enum BoostType {
 // Enum pour les types de prestataires
 enum PrestataireType {
   HOTEL
+  RESIDENCE
+  AUBERGE
+  TRANSPORT
   GUIDE
   AGENCE
   RESTAURANT
   ARTISAN
   ASSOCIATION
-  AUBERGE
-  TRANSPORT
   AUTRE
 }
 
@@ -155,6 +156,9 @@ model Prestataire {
   solde         Decimal         @default(0) @db.Decimal(10, 2)
   rating        Float           @default(0)
   nombreAvis    Int             @default(0)
+  // Stripe Connect - Compte connecté du prestataire
+  stripeAccountId String?       @unique // ID du compte Stripe Connect du prestataire
+  stripeOnboardingCompleted Boolean @default(false) // Indique si l'onboarding Stripe Connect est terminé
   // Système de parrainage
   codeParrain   String          @unique // Code unique pour le parrainage (ex: GT-ABCD1234)
   points        Int             @default(0) // Points accumulés via le parrainage
@@ -178,6 +182,7 @@ model Prestataire {
   @@index([isVerified])
   @@index([planType])
   @@index([codeParrain])
+  @@index([stripeAccountId])
 }
 
 // Modèle Offre
@@ -268,7 +273,7 @@ model Paiement {
   prestataireId   String
   prestataire     Prestataire   @relation(fields: [prestataireId], references: [id], onDelete: Cascade)
   montant         Decimal       @db.Decimal(10, 2) // Montant total (100% pour le prestataire, pas de commission)
-  methode         String // "stripe", "cinetpay", "om", "wave", "free_money", "carte_bancaire"
+  methode         String // "stripe", "cash", "cinetpay", "om", "wave", "free_money", "carte_bancaire"
   transactionId   String?       @unique
   statut          PaymentStatus @default(PENDING)
   stripePaymentId String?
@@ -408,7 +413,7 @@ model Abonnement {
   dateFin              DateTime // Date d'expiration
   statut               AbonnementStatus @default(ACTIVE)
   stripeSubscriptionId String?          @unique // ID de l'abonnement Stripe
-  methode              String // "stripe", "cinetpay", "om", "wave", "free_money"
+  methode              String // "stripe", "cash", "cinetpay", "om", "wave", "free_money"
   transactionId        String?          @unique
   autoRenouvellement   Boolean          @default(true)
   metadata             Json?
@@ -435,7 +440,7 @@ model Boost {
   dateDebut     DateTime    @default(now())
   dateFin       DateTime
   isActive      Boolean     @default(true)
-  methode       String // "stripe", "cinetpay", "om", "wave", "free_money"
+  methode       String // "stripe", "cash", "cinetpay", "om", "wave", "free_money"
   transactionId String?     @unique
   metadata      Json?
   createdAt     DateTime    @default(now())
@@ -531,4 +536,19 @@ model Depense {
   @@index([userId])
   @@index([categorie])
   @@index([date])
+}
+
+// Modèle pour le contenu éditable par les admins
+model ContenuEditable {
+  id            String   @id @default(cuid())
+  page          String   @unique // Identifiant de la page (ex: "cgu", "cgv", "pc", "about", "home", "regions", "plages-iles", etc.)
+  titre         String?  // Titre de la page (optionnel)
+  contenu       Json     // Contenu structuré (sections avec texte, images, vidéos)
+  meta          Json?    // Métadonnées (description, keywords, etc.)
+  version       Int      @default(1) // Version du contenu pour l'historique
+  auteurId      String?  // ID de l'admin qui a modifié
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([page])
 }

@@ -74,7 +74,10 @@ export function Header() {
                 sizes="(max-width: 640px) 40px, (max-width: 768px) 45px, 50px"
               />
             </div>
-            <span className="text-base sm:text-lg md:text-xl font-bold text-foreground hidden min-[375px]:inline truncate">Gooteranga</span>
+            <h5 className="text-3xl font-bold bg-gradient-to-r from-orange-600 via-yellow-500 to-orange-600 bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
+              GooTeranga
+            </h5>
+          
           </Link>
         </div>
 
@@ -148,6 +151,14 @@ export function Header() {
             </DropdownMenuContent>
           </DropdownMenu>
           <Link 
+            href="/regions"
+            className={`text-xs xl:text-sm font-medium transition-colors hover:text-orange-600 whitespace-nowrap ${
+              pathname?.includes('/regions') ? 'text-orange-600' : 'text-foreground'
+            }`}
+          >
+            Régions
+          </Link>
+          <Link 
             href="/about"
             className={`text-xs xl:text-sm font-medium transition-colors hover:text-orange-600 whitespace-nowrap ${
               pathname?.includes('/about') ? 'text-orange-600' : 'text-foreground'
@@ -159,18 +170,7 @@ export function Header() {
 
         {/* Zone droite - Actions */}
         <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 flex-shrink-0 z-20">
-          <Button 
-            asChild
-            variant="default" 
-            size="sm"
-            className="bg-teranga-orange hover:bg-[#FFD700] text-white border-0 shadow-md hover:shadow-lg transition-all font-semibold whitespace-nowrap text-[10px] min-[375px]:text-xs sm:text-sm hidden md:flex h-8 sm:h-9 px-2 sm:px-3"
-          >
-            <Link href="/signup?type=guide">
-              <span className="hidden lg:inline">Devenir Guide</span>
-              <span className="lg:hidden">Guide</span>
-            </Link>
-          </Button>
-
+          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="gap-1 h-8 sm:h-9 px-1.5 sm:px-2 md:px-3">
@@ -209,8 +209,13 @@ export function Header() {
             </Link>
           </Button>
 
-          <Button asChild variant="default" size="sm" className="hidden xl:flex whitespace-nowrap h-8 sm:h-9 text-xs sm:text-sm">
-            <Link href="/login">
+          <Button 
+            asChild
+            variant="default" 
+            size="sm"
+            className="bg-teranga-orange hover:bg-[#FFD700] text-white border-0 shadow-md hover:shadow-lg transition-all font-semibold whitespace-nowrap text-[10px] min-[375px]:text-xs sm:text-sm hidden md:flex h-8 sm:h-9 px-2 sm:px-3"
+          >
+           <Link href="/login">
               <User className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               Connexion
             </Link>
@@ -294,6 +299,14 @@ export function Header() {
                     </Link>
                   </div>
                 </div>
+                <Link 
+                  href="/regions"
+                  className={`px-4 py-2 rounded-md transition-colors ${
+                    pathname?.includes('/regions') ? 'bg-orange-100 text-orange-600' : 'hover:bg-orange-50'
+                  }`}
+                >
+                  Régions
+                </Link>
                 <Link 
                   href="/about"
                   className={`px-4 py-2 rounded-md transition-colors ${

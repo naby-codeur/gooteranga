@@ -3,6 +3,7 @@
 import { usePathname } from '@/i18n/routing'
 import { Header } from './Header'
 import { Footer } from './Footer'
+import { TerangaChatbot } from '@/components/chatbot/TerangaChatbot'
 
 export function ConditionalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -19,6 +20,7 @@ export function ConditionalLayout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <Footer />
+      <TerangaChatbot />
     </div>
   )
 }

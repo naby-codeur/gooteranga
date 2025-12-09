@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
     // Calcul du montant (100% pour le prestataire, pas de commission)
     const montant = Number(offre.prix) * nombreNuits * nombrePersonnes
 
-    // Créer la réservation
+    // Créer la réservation (automatiquement confirmée)
     const reservation = await prisma.reservation.create({
       data: {
         userId: user.id,
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
         dateFin: dateFinObj,
         nombrePersonnes,
         montant,
-        statut: 'PENDING',
+        statut: 'CONFIRMED', // Automatiquement confirmée
         notes,
       },
       include: {

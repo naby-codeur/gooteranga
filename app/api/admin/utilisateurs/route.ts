@@ -198,3 +198,118 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
+/**
+ * DELETE /api/admin/utilisateurs
+ * Supprime définitivement un utilisateur (en cas de non-respect des politiques)
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    await requireRole('ADMIN', request)
+
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
+
+    if (!userId) {
+      return errorResponse('userId est requis', 400)
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        prestataire: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    }) as { role: string; prestataire?: { id: string } | null } | null
+
+    if (!user) {
+      return errorResponse('Utilisateur non trouvé', 404)
+    }
+
+    // Empêcher la suppression d'un admin
+    if (user.role === 'ADMIN') {
+      return errorResponse('Impossible de supprimer un administrateur', 403)
+    }
+
+    // Supprimer les données associées en cascade
+    // Prisma gérera automatiquement les suppressions en cascade selon le schéma
+    // Mais on peut aussi le faire manuellement pour plus de contrôle
+
+    // Si c'est un prestataire, supprimer ses offres d'abord
+    if (user.role === 'PRESTATAIRE' && user.prestataire) {
+      // Supprimer les réservations associées aux offres
+      const offres = await prisma.offre.findMany({
+        where: { prestataireId: user.prestataire.id },
+        select: { id: true },
+      })
+
+      for (const offre of offres) {
+        // Supprimer les réservations
+        await prisma.reservation.deleteMany({
+          where: { offreId: offre.id },
+        })
+        // Supprimer les favoris
+        await prisma.favori.deleteMany({
+          where: { offreId: offre.id },
+        })
+        // Supprimer les avis
+        await prisma.avis.deleteMany({
+          where: { offreId: offre.id },
+        })
+      }
+
+      // Supprimer les offres
+      await prisma.offre.deleteMany({
+        where: { prestataireId: user.prestataire.id },
+      })
+
+      // Supprimer le prestataire
+      await prisma.prestataire.delete({
+        where: { id: user.prestataire.id },
+      })
+    }
+
+    // Supprimer les réservations de l'utilisateur
+    await prisma.reservation.deleteMany({
+      where: { userId },
+    })
+
+    // Supprimer les favoris
+    await prisma.favori.deleteMany({
+      where: { userId },
+    })
+
+    // Supprimer les avis
+    await prisma.avis.deleteMany({
+      where: { userId },
+    })
+
+    // Supprimer les notifications
+    await prisma.notification.deleteMany({
+      where: { userId },
+    })
+
+    // Supprimer les dépenses (si l'utilisateur en a)
+    await prisma.depense.deleteMany({
+      where: { userId },
+    })
+
+    // Supprimer l'utilisateur
+    await prisma.user.delete({
+      where: { id: userId },
+    })
+
+    return successResponse(null, 'Utilisateur supprimé définitivement avec succès', 200)
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      if (error.message === 'Unauthorized' || error.message === 'Forbidden') {
+        return errorResponse(error.message, 403)
+      }
+    }
+    console.error('Error deleting utilisateur:', error)
+    return errorResponse('Internal server error', 500)
+  }
+}
+

@@ -23,6 +23,7 @@ import {
   ChevronRight,
   TrendingUp,
   Bell,
+  Users,
 } from 'lucide-react'
 
 interface SidebarItem {
@@ -55,6 +56,7 @@ const prestataireItems: SidebarItem[] = [
   { id: 'messages', label: 'Messages', icon: MessageSquare, emoji: '💬' },
   { id: 'abonnements', label: 'Abonnement', icon: DollarSign, emoji: '💳' },
   { id: 'boosts', label: 'Boosts', icon: TrendingUp, emoji: '🚀' },
+  { id: 'parrainage', label: 'Parrainage', icon: Users, emoji: '🎁' },
   { id: 'revenus', label: 'Revenus', icon: DollarSign, emoji: '💰' },
   { id: 'statistiques', label: 'Statistiques', icon: BarChart3, emoji: '📈' },
   { id: 'parametres', label: 'Paramètres', icon: Settings, emoji: '⚙️' },
@@ -121,7 +123,8 @@ export function DashboardSidebar({ type, activeSection, onSectionChange }: Dashb
         className={cn(
           'fixed lg:sticky top-0 left-0 h-screen bg-gradient-to-b from-orange-50 via-yellow-50 to-orange-50 border-r border-orange-200/50 shadow-xl z-40 transition-transform duration-300',
           'lg:translate-x-0',
-          isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+          'w-64 lg:w-auto'
         )}
       >
         <div className="flex flex-col h-full">

@@ -575,7 +575,7 @@ export default function DashboardPage() {
         />
         
         <main className="flex-1 overflow-y-auto pb-4 md:pb-0">
-          <div className="container py-4 sm:py-6 md:py-8 lg:py-12 px-3 sm:px-4 md:px-6 lg:px-8">
+          <div className="container py-4 sm:py-6 lg:py-8 xl:py-12 px-3 sm:px-4 lg:px-6 xl:px-8 max-w-full">
           <AnimatePresence mode="wait">
           {/* Section de recherche */}
           {searchQuery.trim() && (
@@ -589,10 +589,10 @@ export default function DashboardPage() {
             >
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
+                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight mb-1 sm:mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
                     Résultats de recherche
                   </h2>
-                  <p className="text-muted-foreground">
+                  <p className="text-sm sm:text-base text-muted-foreground">
                     {searchResults ? (
                       <>
                         {searchResults.reservations.length + searchResults.favoris.length + searchResults.depenses.length + searchResults.messages.length} résultat(s) pour &quot;{searchQuery}&quot;
@@ -677,7 +677,7 @@ export default function DashboardPage() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                           {searchResults.favoris.map((favori) => (
                             <motion.div
                               key={favori.id}
@@ -838,7 +838,7 @@ export default function DashboardPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold tracking-tight mb-1 sm:mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
           Mon Tableau de Bord
         </h1>
         <p className="text-sm sm:text-base md:text-lg text-muted-foreground">
@@ -1146,7 +1146,7 @@ export default function DashboardPage() {
                 transition={{ duration: 0.4 }}
               >
                 <div>
-                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
+                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight mb-1 sm:mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
                     Mes dépenses 💰
                   </h2>
                   <p className="text-muted-foreground">
@@ -1756,7 +1756,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2">
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Prénom</label>
                       <input

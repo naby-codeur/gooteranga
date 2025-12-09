@@ -1,43 +1,12 @@
 'use client'
 
-import { Link, usePathname, useRouter } from '@/i18n/routing'
-import { useLocale } from 'next-intl'
-import { Facebook, Instagram, Twitter, Youtube, Globe, MapPin, Compass, Hotel, UtensilsCrossed, Heart, Sparkles, Sun } from 'lucide-react'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { Link } from '@/i18n/routing'
+import { Facebook, Instagram, Twitter, UtensilsCrossed, Heart, Sparkles, Sun, Waves, Church, Leaf, Landmark, ShoppingBag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 
 export function Footer() {
-  const pathname = usePathname()
-  const router = useRouter()
-  const locale = useLocale()
-
-  const getLocaleLabel = (loc: string) => {
-    switch (loc) {
-      case 'fr':
-        return '🇫🇷 Français'
-      case 'en':
-        return '🇬🇧 English'
-      case 'ar':
-        return '🇸🇦 العربية'
-      case 'es':
-        return '🇪🇸 Español'
-      case 'it':
-        return '🇮🇹 Italiano'
-      case 'pt':
-        return '🇵🇹 Português'
-      case 'de':
-        return '🇩🇪 Deutsch'
-      default:
-        return '🌐'
-    }
-  }
 
   return (
     <footer className="relative overflow-hidden border-t bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 dark:from-green-600 dark:via-yellow-600 dark:to-red-600">
@@ -48,7 +17,7 @@ export function Footer() {
         <div className="absolute bottom-20 left-1/4 w-24 h-24 bg-yellow-400/20 rounded-full blur-xl animate-pulse delay-2000"></div>
       </div>
 
-      <div className="container relative z-10 py-12 md:py-16">
+      <div className="container relative z-10 py-12 md:py-16 px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-5">
           {/* Logo et description */}
           <div className="space-y-6 lg:col-span-2">
@@ -73,8 +42,8 @@ export function Footer() {
                     />
                   </motion.div>
                   <h3 className="text-3xl font-bold bg-gradient-to-r from-orange-600 via-yellow-500 to-orange-600 bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
-              GooTeranga
-            </h3>
+                   GooTeranga
+                  </h3>
                   <motion.div
                     animate={{ rotate: [0, 360] }}
                     transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
@@ -83,11 +52,11 @@ export function Footer() {
                   </motion.div>
                 </div>
             </Link>
-              <p className="text-sm text-muted-foreground max-w-md leading-relaxed">
+              <p className="text-sm max-w-md leading-relaxed">
               Explorez le Sénégal comme jamais auparavant. Découvrez, réservez et vivez des expériences inoubliables 
               avec nos guides locaux certifiés.
             </p>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 text-sm ">
                 <span>Fait avec</span>
                 <motion.div
                   animate={{ scale: [1, 1.2, 1] }}
@@ -112,9 +81,10 @@ export function Footer() {
                 { icon: Facebook, href: 'https://facebook.com', color: 'hover:text-blue-600', label: 'Facebook' },
                 { icon: Instagram, href: 'https://instagram.com', color: 'hover:text-pink-600', label: 'Instagram' },
                 { icon: Twitter, href: 'https://twitter.com', color: 'hover:text-blue-400', label: 'Twitter' },
-                { icon: Youtube, href: 'https://youtube.com', color: 'hover:text-red-600', label: 'Youtube' },
+                {                href: 'https://tiktok.com', color: 'hover:text-black dark:hover:text-white', label: 'TikTok',
+                },
               ].map((social, index) => {
-                const Icon = social.icon
+                const Icon = 'icon' in social ? social.icon : null
                 return (
                   <motion.a
                     key={index}
@@ -130,7 +100,13 @@ export function Footer() {
                     viewport={{ once: true }}
                     transition={{ duration: 0.3, delay: index * 0.1 }}
                   >
-                    <Icon className="h-5 w-5 text-muted-foreground group-hover:text-current transition-colors" />
+                    {Icon ? (
+                      <Icon className="h-5 w-5 text-muted-foreground group-hover:text-current transition-colors" />
+                    ) : (
+                      <svg className="h-5 w-5 text-muted-foreground group-hover:text-current transition-colors" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                      </svg>
+                    )}
                     <div className="absolute inset-0 rounded-full bg-gradient-to-r from-orange-400/20 to-yellow-400/20 opacity-0 group-hover:opacity-100 transition-opacity blur-sm"></div>
                   </motion.a>
                 )
@@ -150,10 +126,12 @@ export function Footer() {
             </h4>
             <ul className="space-y-4 text-sm">
               {[
-                { icon: MapPin, href: '/explorer', label: 'Destinations' },
-                { icon: Compass, href: '/guides', label: 'Guides & Expériences' },
-                { icon: Hotel, href: '/hebergements', label: 'Hébergements' },
-                { icon: UtensilsCrossed, href: '/restaurants', label: 'Restaurants' },
+                { icon: Waves, href: '/plages-iles', label: 'Plages & îles' },
+                { icon: Church, href: '/culture-religion', label: 'Culture & religion' },
+                { icon: UtensilsCrossed, href: '/gastronomie', label: 'Gastronomie sénégalaise' },
+                { icon: Leaf, href: '/nature-ecotourisme', label: 'Nature & écotourisme' },
+                { icon: Landmark, href: '/monuments-histoire', label: 'Monuments & histoire' },
+                { icon: ShoppingBag, href: '/marche-artisanal', label: 'Marché Artisanal' },
               ].map((item, index) => {
                 const Icon = item.icon
                 return (
@@ -195,10 +173,12 @@ export function Footer() {
             </h4>
             <ul className="space-y-4 text-sm">
               {[
+                { href: '/', label: 'Accueil' },
                 { href: '/about', label: 'À propos' },
-                { href: '/contact', label: 'Contact' },
+                { href: '/regions', label: 'Régions' },
+                { href: '/explorer', label: 'Explorer' },
+                { href: '/dashboard/admin?section=support', label: 'Contact' },
                 { href: '/signup?type=guide', label: 'Devenir Guide' },
-                { href: '#', label: 'FAQ' },
               ].map((item, index) => (
                 <motion.li
                   key={index}
@@ -251,11 +231,11 @@ export function Footer() {
             <h4 className="mb-6 font-bold text-lg bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
               Légal
             </h4>
-            <ul className="space-y-4 text-sm">
+            <ul className="space-y-4 text-sm ">
               {[
-                { href: '#', label: 'Conditions Générales d\'Utilisation' },
-                { href: '#', label: 'Conditions Générales de Vente' },
-                { href: '#', label: 'Politique de Confidentialité' },
+                { href: '/cgu-page', label: 'Conditions Générales d\'Utilisation' },
+                { href: '/cgv-page', label: 'Conditions Générales de Vente' },
+                { href: '/pc-page', label: 'Politique de Confidentialité' },
               ].map((item, index) => (
                 <motion.li
                   key={index}
@@ -264,12 +244,19 @@ export function Footer() {
                   viewport={{ once: true }}
                   transition={{ duration: 0.3, delay: index * 0.1 }}
                 >
-                  <a 
+                  <Link 
                     href={item.href} 
                     className="group flex items-center gap-2 text-muted-foreground hover:text-orange-600 transition-all duration-300"
                   >
                     <span className="group-hover:translate-x-1 transition-transform inline-block">{item.label}</span>
-                  </a>
+                    <motion.span
+                      animate={{ x: [0, 5, 0] }}
+                      transition={{ duration: 1.5, repeat: Infinity, delay: index * 0.2 }}
+                      className="text-orange-500 opacity-0 group-hover:opacity-100"
+                    >
+                      →
+                    </motion.span>
+                  </Link>
                 </motion.li>
               ))}
             </ul>
@@ -302,49 +289,18 @@ export function Footer() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground hidden sm:inline">Langue:</span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <motion.div
+                <motion.div
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    suppressHydrationWarning
-                  >
+                    suppressHydrationWarning>
                     <Button 
                       variant="outline" 
                       size="sm" 
                       className="h-9 bg-white dark:bg-gray-800 border-orange-200 dark:border-orange-800 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:border-orange-300 dark:hover:border-orange-700 transition-all"
                     >
-                      <motion.div
-                        animate={{ rotate: [0, 360] }}
-                        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                      >
-                        <Globe className="h-4 w-4 mr-2 text-orange-600" />
-                      </motion.div>
-                      <span className="font-medium">{getLocaleLabel(locale)}</span>
+                      <span className="font-medium">gooteranga92@gmail.com</span>
                     </Button>
-                  </motion.div>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800 border-orange-200 dark:border-orange-800">
-                  {[
-                    { locale: 'fr', label: '🇫🇷 Français' },
-                    { locale: 'en', label: '🇬🇧 English' },
-                    { locale: 'ar', label: '🇸🇦 العربية' },
-                    { locale: 'es', label: '🇪🇸 Español' },
-                    { locale: 'it', label: '🇮🇹 Italiano' },
-                    { locale: 'pt', label: '🇵🇹 Português' },
-                    { locale: 'de', label: '🇩🇪 Deutsch' },
-                  ].map((lang) => (
-                    <DropdownMenuItem
-                      key={lang.locale}
-                      onClick={() => router.replace(pathname || '/', { locale: lang.locale as any })}
-                      className="hover:bg-orange-50 dark:hover:bg-orange-900/20 cursor-pointer focus:bg-orange-50 dark:focus:bg-orange-900/20"
-                    >
-                      {lang.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </motion.div>
             </div>
           </div>
         </motion.div>

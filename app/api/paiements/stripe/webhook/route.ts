@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
 
     // Gérer les différents types d'événements
     switch (event.type) {
+      // Paiements de réservations (Stripe Connect)
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
         const reservationId = paymentIntent.metadata.reservationId
@@ -65,6 +66,144 @@ export async function POST(request: NextRequest) {
             where: { reservationId },
             data: {
               statut: 'FAILED',
+            },
+          })
+        }
+        break
+      }
+
+      // Abonnements Stripe Billing
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session
+
+        // Si c'est un abonnement (subscription)
+        if (session.mode === 'subscription' && session.subscription) {
+          const prestataireId = session.metadata?.prestataireId
+          const planType = session.metadata?.planType
+
+          if (prestataireId && planType) {
+            // Récupérer l'abonnement Stripe pour obtenir les détails
+            const subscription = await stripe.subscriptions.retrieve(session.subscription as string)
+
+            const dateDebut = new Date(subscription.current_period_start * 1000)
+            const dateFin = new Date(subscription.current_period_end * 1000)
+
+            // Créer l'abonnement dans la base de données
+            const abonnement = await prisma.abonnement.create({
+              data: {
+                prestataireId,
+                planType: planType as 'PRO' | 'PREMIUM',
+                montant: subscription.items.data[0]?.price.unit_amount ? subscription.items.data[0].price.unit_amount / 100 : 0,
+                dateDebut,
+                dateFin,
+                statut: 'ACTIVE',
+                methode: 'stripe',
+                stripeSubscriptionId: subscription.id,
+                autoRenouvellement: true,
+              },
+            })
+
+            // Mettre à jour le prestataire
+            await prisma.prestataire.update({
+              where: { id: prestataireId },
+              data: {
+                planType: planType as 'PRO' | 'PREMIUM',
+                planExpiresAt: dateFin,
+              },
+            })
+          }
+        }
+
+        // Si c'est un paiement ponctuel (boost)
+        if (session.mode === 'payment') {
+          const prestataireId = session.metadata?.prestataireId
+          const type = session.metadata?.type
+          const duree = session.metadata?.duree
+          const offreId = session.metadata?.offreId
+          const region = session.metadata?.region
+          const categorie = session.metadata?.categorie
+          const dateDebut = session.metadata?.dateDebut
+          const dateFin = session.metadata?.dateFin
+
+          if (prestataireId && type && duree && dateDebut && dateFin) {
+            // Créer le boost dans la base de données
+            const boost = await prisma.boost.create({
+              data: {
+                prestataireId,
+                offreId: offreId && offreId !== '' ? offreId : null,
+                type: type as 'EXPERIENCE' | 'REGIONAL' | 'CATEGORIE' | 'MENSUEL',
+                region: region && region !== '' ? region : null,
+                categorie: categorie && categorie !== '' ? categorie : null,
+                montant: session.amount_total ? session.amount_total / 100 : 0,
+                dateDebut: new Date(dateDebut),
+                dateFin: new Date(dateFin),
+                isActive: true,
+                methode: 'stripe',
+                transactionId: session.payment_intent as string,
+              },
+            })
+
+            // Si c'est un boost d'expérience, marquer l'offre comme featured
+            if (type === 'EXPERIENCE' && offreId && offreId !== '') {
+              await prisma.offre.update({
+                where: { id: offreId },
+                data: {
+                  isFeatured: true,
+                  featuredExpiresAt: new Date(dateFin),
+                },
+              })
+            }
+          }
+        }
+        break
+      }
+
+      // Gestion des renouvellements d'abonnement
+      case 'customer.subscription.updated': {
+        const subscription = event.data.object as Stripe.Subscription
+        const prestataireId = subscription.metadata?.prestataireId
+
+        if (prestataireId && subscription.status === 'active') {
+          const dateFin = new Date(subscription.current_period_end * 1000)
+
+          // Mettre à jour l'abonnement
+          await prisma.abonnement.updateMany({
+            where: {
+              prestataireId,
+              stripeSubscriptionId: subscription.id,
+            },
+            data: {
+              dateFin,
+              statut: 'ACTIVE',
+            },
+          })
+
+          // Mettre à jour le prestataire
+          await prisma.prestataire.update({
+            where: { id: prestataireId },
+            data: {
+              planExpiresAt: dateFin,
+            },
+          })
+        }
+        break
+      }
+
+      // Annulation d'abonnement
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object as Stripe.Subscription
+        const prestataireId = subscription.metadata?.prestataireId
+
+        if (prestataireId) {
+          // Marquer l'abonnement comme annulé
+          await prisma.abonnement.updateMany({
+            where: {
+              prestataireId,
+              stripeSubscriptionId: subscription.id,
+            },
+            data: {
+              statut: 'CANCELLED',
+              autoRenouvellement: false,
             },
           })
         }

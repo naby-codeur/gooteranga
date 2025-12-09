@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useState, useMemo } from 'react'
@@ -44,6 +45,7 @@ import { useOffres } from '@/lib/hooks/useOffres'
 import { ChatInterface } from '@/components/messaging/ChatInterface'
 import { CreateOffreForm } from '@/components/offres/CreateOffreForm'
 import { OfferCard } from '@/components/offers/OfferCard'
+import { ReferralDashboard } from '@/components/referral/ReferralDashboard'
 import { useLocale } from 'next-intl'
 import { usePathname, useRouter } from '@/i18n/routing'
 import { cn } from '@/lib/utils'
@@ -69,6 +71,8 @@ export default function PrestataireDashboardPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [localMessages, setLocalMessages] = useState<MockMessage[]>([])
   const [searchQuery, setSearchQuery] = useState('')
+  const [searchFilter, setSearchFilter] = useState<'all' | 'offres' | 'reservations' | 'paiements' | 'messages' | 'favoris' | 'depenses'>('all')
+  const [showMobileSearch, setShowMobileSearch] = useState(false)
   const [boostType, setBoostType] = useState<'EXPERIENCE' | 'REGIONAL' | 'CATEGORIE' | 'MENSUEL'>('EXPERIENCE')
   const [selectedOffreId, setSelectedOffreId] = useState<string>('')
   const [boostDuree, setBoostDuree] = useState<'jour' | 'semaine' | 'mois'>('semaine')
@@ -164,20 +168,50 @@ export default function PrestataireDashboardPage() {
       filtered = offres.filter(offre => offre.prestataire?.id === user.prestataire?.id)
     }
     
-    // Appliquer la recherche si présente
-    if (searchQuery.trim()) {
+    // Appliquer la recherche si présente et si le filtre correspond
+    if (searchQuery.trim() && (searchFilter === 'all' || searchFilter === 'offres')) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(offre => 
         offre.titre.toLowerCase().includes(query) ||
         offre.description.toLowerCase().includes(query) ||
         offre.region?.toLowerCase().includes(query) ||
         offre.ville?.toLowerCase().includes(query) ||
-        offre.type.toLowerCase().includes(query)
+        offre.type.toLowerCase().includes(query) ||
+        offre.prestataire?.nomEntreprise?.toLowerCase().includes(query) ||
+        offre.prix.toString().includes(query)
       )
+    } else if (searchFilter === 'offres' && !searchQuery.trim()) {
+      // Si on filtre uniquement les offres mais sans recherche, retourner toutes les offres
+      return filtered
+    } else if (searchFilter !== 'all' && searchFilter !== 'offres') {
+      // Si on filtre autre chose que les offres, retourner un tableau vide
+      return []
     }
     
     return filtered
-  }, [offres, user, searchQuery])
+  }, [offres, user, searchQuery, searchFilter])
+
+  // Filtrer les réservations selon la recherche
+  const reservationsFiltrees = useMemo(() => {
+    if (searchFilter !== 'all' && searchFilter !== 'reservations') {
+      return []
+    }
+    if (!searchQuery.trim()) return reservations
+    
+    const query = searchQuery.toLowerCase()
+    return reservations.filter(reservation => 
+      reservation.offre?.titre?.toLowerCase().includes(query) ||
+      reservation.offre?.ville?.toLowerCase().includes(query) ||
+      reservation.offre?.region?.toLowerCase().includes(query) ||
+      reservation.user?.prenom?.toLowerCase().includes(query) ||
+      reservation.user?.nom?.toLowerCase().includes(query) ||
+      reservation.user?.email?.toLowerCase().includes(query) ||
+      reservation.statut?.toLowerCase().includes(query) ||
+      reservation.montant.toString().includes(query) ||
+      new Date(reservation.dateDebut).toLocaleDateString('fr-FR').toLowerCase().includes(query) ||
+      (reservation.dateFin && new Date(reservation.dateFin).toLocaleDateString('fr-FR').toLowerCase().includes(query))
+    )
+  }, [reservations, searchQuery, searchFilter])
 
   // Calculer le solde disponible (revenus payés)
   const solde = useMemo(() => {
@@ -203,6 +237,38 @@ export default function PrestataireDashboardPage() {
   const conversations = useMemo(() => {
     return getPrestataireConversations(user?.id || 'prestataire-current')
   }, [user?.id])
+
+  // Filtrer les paiements selon la recherche
+  const paiementsFiltres = useMemo(() => {
+    if (searchFilter !== 'all' && searchFilter !== 'paiements') {
+      return []
+    }
+    if (!searchQuery.trim()) return paiements
+    
+    const query = searchQuery.toLowerCase()
+    return paiements.filter(paiement => 
+      paiement.montant.toString().includes(query) ||
+      paiement.methode.toLowerCase().includes(query) ||
+      new Date(paiement.date).toLocaleDateString('fr-FR').toLowerCase().includes(query) ||
+      paiement.statut.toLowerCase().includes(query)
+    )
+  }, [paiements, searchQuery, searchFilter])
+
+  // Filtrer les conversations selon la recherche
+  const conversationsFiltrees = useMemo(() => {
+    if (searchFilter !== 'all' && searchFilter !== 'messages') {
+      return []
+    }
+    if (!searchQuery.trim()) return conversations
+    
+    const query = searchQuery.toLowerCase()
+    return conversations.filter(conversation => 
+      conversation.name.toLowerCase().includes(query) ||
+      `${conversation.user.prenom} ${conversation.user.nom}`.toLowerCase().includes(query) ||
+      conversation.user.email?.toLowerCase().includes(query) ||
+      conversation.lastMessage?.toLowerCase().includes(query)
+    )
+  }, [conversations, searchQuery, searchFilter])
 
   const messages = useMemo(() => {
     if (!selectedConversationId) return []
@@ -267,10 +333,10 @@ export default function PrestataireDashboardPage() {
   }
 
   return (
-    <div className="flex w-full">
+    <div className="flex w-full min-h-screen">
       <DashboardSidebar type="prestataire" activeSection={activeSection} onSectionChange={setActiveSection} />
       
-      <div className="flex-1 flex flex-col lg:ml-0 min-h-screen bg-gradient-to-br from-orange-50/50 via-yellow-50/30 to-orange-50/50">
+      <div className="flex-1 flex flex-col min-h-screen bg-gradient-to-br from-orange-50/50 via-yellow-50/30 to-orange-50/50 lg:ml-0">
         <DashboardHeader 
           type="prestataire" 
           userName={`${userData.prenom} ${userData.nom}`}
@@ -278,6 +344,10 @@ export default function PrestataireDashboardPage() {
           onSectionChange={setActiveSection}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          searchFilter={searchFilter}
+          onSearchFilterChange={setSearchFilter}
+          showMobileSearch={showMobileSearch}
+          onShowMobileSearchChange={setShowMobileSearch}
           notifications={notifications}
           unreadCount={unreadCount}
           onMarkAsRead={markAsRead}
@@ -285,8 +355,8 @@ export default function PrestataireDashboardPage() {
           onDeleteNotification={deleteNotification}
         />
         
-        <main className="flex-1 overflow-y-auto">
-          <div className="container py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
+        <main className="flex-1 overflow-y-auto pb-4 lg:pb-0">
+          <div className="container max-w-7xl mx-auto py-4 sm:py-6 lg:py-8 xl:py-12 px-3 sm:px-4 lg:px-6 xl:px-8 max-w-full">
           <AnimatePresence mode="wait">
           {activeSection === 'overview' && (
             <motion.div
@@ -297,26 +367,27 @@ export default function PrestataireDashboardPage() {
               transition={{ duration: 0.3 }}
             >
               <motion.div 
-                className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                className="mb-4 sm:mb-5 md:mb-6 lg:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
               >
-        <div>
-                  <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
-            Tableau de Bord Prestataire
-          </h1>
-          <p className="text-base sm:text-lg text-muted-foreground">
-            Gérez vos offres, réservations et revenus
-          </p>
-        </div>
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Button onClick={() => setActiveSection('offres')} className="w-full sm:w-auto">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Nouvelle offre
+                <div className="w-full sm:w-auto flex-1">
+                  <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mb-1 sm:mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
+                    Tableau de Bord Prestataire
+                  </h1>
+                  <p className="text-xs sm:text-sm md:text-base lg:text-lg text-muted-foreground">
+                    Gérez vos offres, réservations et revenus
+                  </p>
+                </div>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="w-full sm:w-auto flex-shrink-0">
+                  <Button onClick={() => setActiveSection('offres')} className="w-full sm:w-auto text-xs sm:text-sm md:text-base">
+                    <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">Nouvelle offre</span>
+                    <span className="sm:hidden">Nouvelle</span>
                   </Button>
                 </motion.div>
-      </motion.div>
+              </motion.div>
 
               <motion.div 
                 className="space-y-6"
@@ -324,32 +395,32 @@ export default function PrestataireDashboardPage() {
                 initial="hidden"
                 animate="visible"
               >
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             <motion.div variants={itemVariants}>
             <Card className="hover:shadow-lg transition-shadow duration-300">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Vues totales</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 sm:px-6">
+                <CardTitle className="text-xs sm:text-sm font-medium">Vues totales</CardTitle>
                 <motion.div
                   animate={{ scale: [1, 1.1, 1] }}
                   transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
                 >
-                  <Eye className="h-4 w-4 text-muted-foreground" />
+                  <Eye className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                 </motion.div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-3 sm:px-6">
                 {loading ? (
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin text-muted-foreground" />
                 ) : (
                   <>
                     <motion.div 
-                      className="text-2xl font-bold"
+                      className="text-xl sm:text-2xl font-bold"
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
                     >
                       {stats.vues.toLocaleString()}
                     </motion.div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
                       Estimation basée sur les réservations
                     </p>
                   </>
@@ -450,7 +521,7 @@ export default function PrestataireDashboardPage() {
           </div>
 
           {/* Solde et actions rapides */}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
             <motion.div variants={itemVariants}>
             <Card className="bg-gradient-to-br from-orange-500 to-yellow-500 text-white hover:shadow-xl transition-shadow duration-300">
               <CardHeader>
@@ -519,17 +590,49 @@ export default function PrestataireDashboardPage() {
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
-              ) : reservations.length === 0 ? (
+              ) : ((searchQuery.trim() && (searchFilter === 'all' || searchFilter === 'reservations')) ? reservationsFiltrees : reservations).length === 0 ? (
                 <div className="text-center py-12">
                   <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Aucune réservation</h3>
+                  <h3 className="text-lg font-semibold mb-2">
+                    {searchQuery.trim() ? 'Aucune réservation trouvée' : 'Aucune réservation'}
+                  </h3>
                   <p className="text-muted-foreground">
-                    Vos réservations apparaîtront ici
+                    {searchQuery.trim() 
+                      ? `Aucune réservation ne correspond à &quot;${searchQuery}&quot;`
+                      : 'Vos réservations apparaîtront ici'}
                   </p>
+                  {searchQuery.trim() && (
+                    <Button 
+                      variant="outline" 
+                      className="mt-4"
+                      onClick={() => setSearchQuery('')}
+                    >
+                      Effacer la recherche
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {reservations.slice(0, 5).map((reservation, index) => (
+                  {searchQuery.trim() && (searchFilter === 'all' || searchFilter === 'reservations') && reservationsFiltrees.length > 0 && (
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                      <p className="text-sm text-blue-800">
+                        <strong>{reservationsFiltrees.length}</strong> réservation{reservationsFiltrees.length > 1 ? 's' : ''} trouvée{reservationsFiltrees.length > 1 ? 's' : ''} pour &quot;{searchQuery}&quot;
+                      </p>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          setSearchQuery('')
+                          setSearchFilter('all')
+                        }}
+                        className="w-full sm:w-auto"
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Effacer
+                      </Button>
+                    </div>
+                  )}
+                  {((searchQuery.trim() && (searchFilter === 'all' || searchFilter === 'reservations')) ? reservationsFiltrees : reservations).slice(0, 5).map((reservation, index) => (
                     <motion.div
                       key={reservation.id}
                       initial={{ opacity: 0, x: -20 }}
@@ -622,50 +725,87 @@ export default function PrestataireDashboardPage() {
               ) : (
                 <>
                   <motion.div 
-                    className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                    className="mb-4 sm:mb-5 md:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4"
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4 }}
                   >
-                    <div>
-                      <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
+                    <div className="w-full sm:w-auto flex-1">
+                      <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold tracking-tight mb-1 sm:mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
                         Mes offres 🎯
                       </h2>
-                      <p className="text-muted-foreground">
+                      <p className="text-xs sm:text-sm md:text-base text-muted-foreground">
                         Gérez vos offres et services
                       </p>
                     </div>
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="w-full sm:w-auto flex-shrink-0">
                       <Button 
-                        className="w-full sm:w-auto"
+                        className="w-full sm:w-auto text-xs sm:text-sm md:text-base"
                         onClick={() => setShowCreateOffreForm(true)}
                       >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Ajouter une offre
+                        <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                        <span className="hidden sm:inline">Ajouter une offre</span>
+                        <span className="sm:hidden">Ajouter</span>
                       </Button>
                     </motion.div>
                   </motion.div>
 
                   {loading || offresLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : mesOffres.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Plus className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">Aucune offre</h3>
-                      <p className="text-muted-foreground mb-4">
-                        Créez votre première offre pour commencer
-                      </p>
-                      <Button onClick={() => setShowCreateOffreForm(true)}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Créer une offre
-                      </Button>
-                    </div>
-                  ) : (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : mesOffres.length === 0 ? (
+            <div className="text-center py-12 px-4">
+              <Plus className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">
+                {(searchQuery.trim() && (searchFilter === 'all' || searchFilter === 'offres')) ? 'Aucune offre trouvée' : 'Aucune offre'}
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                {(searchQuery.trim() && (searchFilter === 'all' || searchFilter === 'offres'))
+                  ? `Aucune offre ne correspond à &quot;${searchQuery}&quot;`
+                  : 'Créez votre première offre pour commencer'}
+              </p>
+              {(searchQuery.trim() && (searchFilter === 'all' || searchFilter === 'offres')) ? (
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setSearchQuery('')
+                    setSearchFilter('all')
+                  }}
+                >
+                  Effacer la recherche
+                </Button>
+              ) : (
+                <Button onClick={() => setShowCreateOffreForm(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Créer une offre
+                </Button>
+              )}
+            </div>
+          ) : (
                     <>
-                      {/* Statistiques rapides */}
-                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+                             {/* Indicateur de recherche active */}
+                             {searchQuery.trim() && (searchFilter === 'all' || searchFilter === 'offres') && mesOffres.length > 0 && (
+                               <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                                 <p className="text-sm text-blue-800">
+                                   <strong>{mesOffres.length}</strong> offre{mesOffres.length > 1 ? 's' : ''} trouvée{mesOffres.length > 1 ? 's' : ''} pour &quot;{searchQuery}&quot;
+                                 </p>
+                                 <Button 
+                                   variant="ghost" 
+                                   size="sm"
+                                   onClick={() => {
+                                     setSearchQuery('')
+                                     setSearchFilter('all')
+                                   }}
+                                   className="w-full sm:w-auto"
+                                 >
+                                   <X className="h-4 w-4 mr-1" />
+                                   Effacer
+                                 </Button>
+                               </div>
+                             )}
+                             {/* Statistiques rapides */}
+                             <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4 mb-4 sm:mb-6">
                         <Card className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
@@ -718,147 +858,152 @@ export default function PrestataireDashboardPage() {
                         </Card>
                       </div>
 
-                      {/* Grille d'offres améliorée */}
-                      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                             {/* Grille d'offres améliorée */}
+                             <div className="grid gap-3 sm:gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 items-start">
                         {mesOffres.map((offre, index) => {
                           const lieu = `${offre.ville || ''}, ${offre.region || ''}`.replace(/^,\s*|,\s*$/g, '') || 'Non spécifié'
                           const isBoosted = offre.isFeatured
                           
                           return (
-                            <motion.div
-                              key={offre.id}
+                <motion.div
+                  key={offre.id}
                               initial={{ opacity: 0, y: 20 }}
                               animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: index * 0.1, duration: 0.3 }}
-                              className="relative"
+                  transition={{ delay: index * 0.1, duration: 0.3 }}
+                              className="flex flex-col h-full"
                             >
-                              {/* Badge Boost si actif */}
-                              {isBoosted && (
-                                <div className="absolute top-2 left-2 z-10">
-                                  <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white border-0 shadow-lg">
-                                    <Zap className="h-3 w-3 mr-1" />
-                                    Boosté
+                              <div className="relative flex-1">
+                                {/* Badge Boost si actif */}
+                                {isBoosted && (
+                                  <div className="absolute top-2 left-2 z-10">
+                                    <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white border-0 shadow-lg">
+                                      <Zap className="h-3 w-3 mr-1" />
+                                      Boosté
+                                    </Badge>
+                                  </div>
+                                )}
+
+                                {/* Badge Statut */}
+                                <div className="absolute top-2 right-2 z-10">
+                                  <Badge variant={offre.isActive ? 'default' : 'secondary'}>
+                                    {offre.isActive ? 'Active' : 'Inactive'}
                                   </Badge>
                                 </div>
-                              )}
 
-                              {/* Badge Statut */}
-                              <div className="absolute top-2 right-2 z-10">
-                                <Badge variant={offre.isActive ? 'default' : 'secondary'}>
-                                  {offre.isActive ? 'Active' : 'Inactive'}
-                                </Badge>
+                                <OfferCard
+                                  id={offre.id}
+                                  titre={offre.titre}
+                                  description={offre.description}
+                                  prix={Number(offre.prix)}
+                                  prixUnite={offre.prixUnite}
+                                  image={offre.images && offre.images.length > 0 ? offre.images[0] : '/images/ba1.png'}
+                                  videos={offre.videos || []}
+                                  rating={offre.rating || 0}
+                                  nombreAvis={offre._count?.avis || 0}
+                                  nombreLikes={offre._count?.likes || offre.nombreLikes || 0}
+                                  vuesVideo={offre.vuesVideo || 0}
+                                  prestataire={{
+                                    nomEntreprise: offre.prestataire.nomEntreprise,
+                                    logo: offre.prestataire.logo,
+                                  }}
+                                  lieu={lieu}
+                                  region={offre.region}
+                                  ville={offre.ville}
+                                  isFavorite={false}
+                                  isLiked={false}
+                                  onToggleFavorite={async (offreId) => {
+                                    // TODO: Implémenter l'API pour ajouter/retirer des favoris
+                                    console.log('Toggle favorite:', offreId)
+                                  }}
+                                  onToggleLike={async (offreId) => {
+                                    // TODO: Implémenter l'API pour ajouter/retirer des likes
+                                    console.log('Toggle like:', offreId)
+                                  }}
+                                  onShare={(offreId) => {
+                                    if (navigator.share) {
+                                      navigator.share({
+                                        title: offre.titre,
+                                        text: offre.description,
+                                        url: `${window.location.origin}/experience/${offreId}`
+                                      }).catch(() => {})
+                                    } else {
+                                      navigator.clipboard.writeText(`${window.location.origin}/experience/${offreId}`)
+                                    }
+                                  }}
+                                  className="h-full"
+                                />
                               </div>
 
-                              <OfferCard
-                                id={offre.id}
-                                titre={offre.titre}
-                                description={offre.description}
-                                prix={Number(offre.prix)}
-                                prixUnite={offre.prixUnite}
-                                image={offre.images && offre.images.length > 0 ? offre.images[0] : '/images/ba1.png'}
-                                videos={offre.videos || []}
-                                rating={offre.rating || 0}
-                                nombreAvis={offre._count?.avis || 0}
-                                nombreLikes={offre._count?.likes || offre.nombreLikes || 0}
-                                vuesVideo={offre.vuesVideo || 0}
-                                prestataire={{
-                                  nomEntreprise: offre.prestataire.nomEntreprise,
-                                  logo: offre.prestataire.logo,
-                                }}
-                                lieu={lieu}
-                                region={offre.region}
-                                ville={offre.ville}
-                                isFavorite={false}
-                                isLiked={false}
-                                onToggleFavorite={async (offreId) => {
-                                  // TODO: Implémenter l'API pour ajouter/retirer des favoris
-                                  console.log('Toggle favorite:', offreId)
-                                }}
-                                onToggleLike={async (offreId) => {
-                                  // TODO: Implémenter l'API pour ajouter/retirer des likes
-                                  console.log('Toggle like:', offreId)
-                                }}
-                                onShare={(offreId) => {
-                                  if (navigator.share) {
-                                    navigator.share({
-                                      title: offre.titre,
-                                      text: offre.description,
-                                      url: `${window.location.origin}/experience/${offreId}`
-                                    }).catch(() => {})
-                                  } else {
-                                    navigator.clipboard.writeText(`${window.location.origin}/experience/${offreId}`)
-                                  }
-                                }}
-                                className="h-full"
-                              />
-
-                              {/* Actions de gestion */}
-                              <div className="mt-3 flex gap-2">
-                                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1">
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    className="w-full"
-                                    onClick={() => {
-                                      setEditingOffreId(offre.id)
-                                      setShowCreateOffreForm(true)
-                                    }}
-                                  >
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Modifier
-                                  </Button>
-                                </motion.div>
-                                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={async () => {
-                                      if (confirm('Êtes-vous sûr de vouloir supprimer cette offre ? Cette action est irréversible.')) {
-                                        try {
-                                          setIsDeleting(true)
-                                          const success = await deleteOffre(offre.id)
-                                          
-                                          if (success) {
-                                            console.log('Offre supprimée avec succès')
-                                          } else {
-                                            alert('Erreur lors de la suppression')
-                                          }
-                                        } catch (error) {
-                                          console.error('Error deleting offre:', error)
-                                          alert('Erreur lors de la suppression de l\'offre')
-                                        } finally {
-                                          setIsDeleting(false)
-                                        }
-                                      }
-                                    }}
-                                    disabled={isDeleting}
-                                  >
-                                    {isDeleting ? (
-                                      <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                      <Trash2 className="h-4 w-4" />
-                                    )}
-                                  </Button>
-                                </motion.div>
-                                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => setActiveSection('boosts')}
-                                    className={cn(
-                                      isBoosted && "bg-yellow-50 border-yellow-300"
-                                    )}
-                                  >
-                                    <Zap className="h-4 w-4" />
-                                  </Button>
-                                </motion.div>
-                              </div>
+                                     {/* Actions de gestion */}
+                                     <div className="mt-3 flex flex-wrap gap-2">
+                                       <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1 min-w-[100px]">
+                                         <Button 
+                                           variant="outline" 
+                                           size="sm" 
+                                           className="w-full text-xs sm:text-sm"
+                                           onClick={() => {
+                                             setEditingOffreId(offre.id)
+                                             setShowCreateOffreForm(true)
+                                           }}
+                                         >
+                                           <Edit className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                                           <span className="hidden sm:inline">Modifier</span>
+                                           <span className="sm:hidden">Modif.</span>
+                                         </Button>
+                                       </motion.div>
+                                       <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                                         <Button 
+                                           variant="outline" 
+                                           size="sm"
+                                           className="text-xs sm:text-sm"
+                                           onClick={async () => {
+                                             if (confirm('Êtes-vous sûr de vouloir supprimer cette offre ? Cette action est irréversible.')) {
+                                               try {
+                                                 setIsDeleting(true)
+                                                 const success = await deleteOffre(offre.id)
+                                                 
+                                                 if (success) {
+                                                   console.log('Offre supprimée avec succès')
+                                                 } else {
+                                                   alert('Erreur lors de la suppression')
+                                                 }
+                                               } catch (error) {
+                                                 console.error('Error deleting offre:', error)
+                                                 alert('Erreur lors de la suppression de l\'offre')
+                                               } finally {
+                                                 setIsDeleting(false)
+                                               }
+                                             }
+                                           }}
+                                           disabled={isDeleting}
+                                         >
+                                           {isDeleting ? (
+                                             <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                                           ) : (
+                                             <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                                           )}
+                                         </Button>
+                                       </motion.div>
+                                       <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                                         <Button 
+                                           variant="outline" 
+                                           size="sm"
+                                           onClick={() => setActiveSection('boosts')}
+                                           className={cn(
+                                             "text-xs sm:text-sm",
+                                             isBoosted && "bg-yellow-50 border-yellow-300"
+                                           )}
+                                         >
+                                           <Zap className="h-3 w-3 sm:h-4 sm:w-4" />
+                                         </Button>
+                                       </motion.div>
+                                     </div>
                             </motion.div>
                           )
                         })}
-                      </div>
+            </div>
                     </>
-                  )}
+          )}
                 </>
               )}
             </motion.div>
@@ -874,15 +1019,15 @@ export default function PrestataireDashboardPage() {
               className="space-y-4"
             >
               <motion.div 
-                className="mb-6"
+                className="mb-4 sm:mb-5 md:mb-6"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
               >
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
+                <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold tracking-tight mb-1 sm:mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
                   Réservations 📅
                 </h2>
-                <p className="text-muted-foreground">
+                <p className="text-xs sm:text-sm md:text-base text-muted-foreground">
                   Acceptez ou refusez les demandes de réservation
                 </p>
               </motion.div>
@@ -896,17 +1041,52 @@ export default function PrestataireDashboardPage() {
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
-              ) : reservations.length === 0 ? (
-                <div className="text-center py-12">
+              ) : reservationsFiltrees.length === 0 ? (
+                <div className="text-center py-12 px-4">
                   <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Aucune réservation</h3>
+                  <h3 className="text-lg font-semibold mb-2">
+                    {(searchQuery.trim() && (searchFilter === 'all' || searchFilter === 'reservations')) ? 'Aucune réservation trouvée' : 'Aucune réservation'}
+                  </h3>
                   <p className="text-muted-foreground">
-                    Vos réservations apparaîtront ici
+                    {(searchQuery.trim() && (searchFilter === 'all' || searchFilter === 'reservations'))
+                      ? `Aucune réservation ne correspond à &quot;${searchQuery}&quot;`
+                      : 'Vos réservations apparaîtront ici'}
                   </p>
+                  {searchQuery.trim() && (searchFilter === 'all' || searchFilter === 'reservations') && (
+                    <Button 
+                      variant="outline" 
+                      className="mt-4"
+                      onClick={() => {
+                        setSearchQuery('')
+                        setSearchFilter('all')
+                      }}
+                    >
+                      Effacer la recherche
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {reservations.map((reservation, index) => (
+                  {searchQuery.trim() && (searchFilter === 'all' || searchFilter === 'reservations') && reservationsFiltrees.length > 0 && (
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                      <p className="text-sm text-blue-800">
+                        <strong>{reservationsFiltrees.length}</strong> réservation{reservationsFiltrees.length > 1 ? 's' : ''} trouvée{reservationsFiltrees.length > 1 ? 's' : ''} pour &quot;{searchQuery}&quot;
+                      </p>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          setSearchQuery('')
+                          setSearchFilter('all')
+                        }}
+                        className="w-full sm:w-auto"
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Effacer
+                      </Button>
+                    </div>
+                  )}
+                  {reservationsFiltrees.map((reservation, index) => (
                     <motion.div
                       key={reservation.id}
                       initial={{ opacity: 0, y: 20 }}
@@ -915,43 +1095,44 @@ export default function PrestataireDashboardPage() {
                       whileHover={{ scale: 1.01, y: -2 }}
                       className="border rounded-lg p-4 sm:p-6 space-y-4 hover:shadow-md transition-shadow"
                     >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="text-lg font-semibold">{reservation.offre?.titre || 'Offre'}</h3>
-                          <p className="text-sm text-muted-foreground">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-base sm:text-lg font-semibold mb-1 sm:mb-2">{reservation.offre?.titre || 'Offre'}</h3>
+                          <p className="text-xs sm:text-sm text-muted-foreground mb-1">
                             Client: {reservation.user ? `${reservation.user.prenom || ''} ${reservation.user.nom || ''}`.trim() || reservation.user.email : 'Non spécifié'}
                           </p>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-xs sm:text-sm text-muted-foreground">
                             Date: {new Date(reservation.dateDebut).toLocaleDateString('fr-FR')}
                             {reservation.dateFin && ` - ${new Date(reservation.dateFin).toLocaleDateString('fr-FR')}`}
                           </p>
                         </div>
-                        <Badge
-                          variant={reservation.statut === 'CONFIRMED' ? 'default' : 'secondary'}
-                        >
-                          {reservation.statut === 'PENDING' ? 'En attente' : 
-                           reservation.statut === 'CONFIRMED' ? 'Confirmée' :
-                           reservation.statut === 'CANCELLED' ? 'Annulée' : 'Terminée'}
-                        </Badge>
+                        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                          <Badge
+                            variant={reservation.statut === 'CONFIRMED' ? 'default' : 'secondary'}
+                            className="text-xs sm:text-sm"
+                          >
+                            {reservation.statut === 'PENDING' ? 'En attente' : 
+                             reservation.statut === 'CONFIRMED' ? 'Confirmée' :
+                             reservation.statut === 'CANCELLED' ? 'Annulée' : 'Terminée'}
+                          </Badge>
+                          <p className="text-base sm:text-lg font-bold">
+                            {Number(reservation.montant).toLocaleString()} FCFA
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <p className="text-lg font-bold">
-                          {Number(reservation.montant).toLocaleString()} FCFA
-                        </p>
                       {reservation.statut === 'PENDING' && (
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                            <Button variant="outline" size="sm" className="w-full sm:w-auto">Refuser</Button>
+                        <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
+                          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1">
+                            <Button variant="outline" size="sm" className="w-full">Refuser</Button>
                           </motion.div>
-                          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                            <Button size="sm" className="w-full sm:w-auto">Accepter</Button>
+                          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1">
+                            <Button size="sm" className="w-full">Accepter</Button>
                           </motion.div>
                         </div>
                       )}
-                      </div>
                       {reservation.statut === 'PENDING' && (
-                        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                          <Button variant="ghost" size="sm" className="w-full sm:w-auto">
+                        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full sm:w-auto">
+                          <Button variant="ghost" size="sm" className="w-full sm:w-auto" onClick={() => setActiveSection('messages')}>
                             <MessageSquare className="h-4 w-4 mr-2" />
                             Contacter le client
                           </Button>
@@ -977,12 +1158,31 @@ export default function PrestataireDashboardPage() {
             >
               <Card className="hover:shadow-lg transition-shadow duration-300 border-0 shadow-xl">
                 <CardContent className="p-0">
+                  {searchQuery.trim() && (searchFilter === 'all' || searchFilter === 'messages') && conversationsFiltrees.length > 0 && (
+                    <div className="p-4 bg-blue-50 border-b border-blue-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                      <p className="text-sm text-blue-800">
+                        <strong>{conversationsFiltrees.length}</strong> conversation{conversationsFiltrees.length > 1 ? 's' : ''} trouvée{conversationsFiltrees.length > 1 ? 's' : ''} pour &quot;{searchQuery}&quot;
+                      </p>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          setSearchQuery('')
+                          setSearchFilter('all')
+                        }}
+                        className="w-full sm:w-auto"
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Effacer
+                      </Button>
+                    </div>
+                  )}
                   <ChatInterface
                     currentUserId={user?.id || 'prestataire-current'}
-                    conversations={conversations}
+                    conversations={(searchQuery.trim() && (searchFilter === 'all' || searchFilter === 'messages')) ? conversationsFiltrees : conversations}
                     messages={allMessages}
-                    emptyStateTitle="Aucun message"
-                    emptyStateDescription="Vos conversations avec les clients apparaîtront ici"
+                    emptyStateTitle={(searchQuery.trim() && (searchFilter === 'all' || searchFilter === 'messages')) ? "Aucune conversation trouvée" : "Aucun message"}
+                    emptyStateDescription={(searchQuery.trim() && (searchFilter === 'all' || searchFilter === 'messages')) ? `Aucune conversation ne correspond à &quot;${searchQuery}&quot;` : "Vos conversations avec les clients apparaîtront ici"}
                     onSendMessage={handleSendMessage}
                     onSelectConversation={handleSelectConversation}
                   />
@@ -1001,15 +1201,15 @@ export default function PrestataireDashboardPage() {
               className="space-y-4"
             >
               <motion.div 
-                className="mb-6"
+                className="mb-4 sm:mb-5 md:mb-6"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
               >
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
+                <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold tracking-tight mb-1 sm:mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
                   Revenus 💰
                 </h2>
-                <p className="text-muted-foreground">
+                <p className="text-xs sm:text-sm md:text-base text-muted-foreground">
                   Gérez vos revenus, paiements et retraits
                 </p>
               </motion.div>
@@ -1039,45 +1239,82 @@ export default function PrestataireDashboardPage() {
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                     </div>
-                  ) : paiements.length === 0 ? (
+                  ) : paiementsFiltres.length === 0 ? (
                     <div className="text-center py-12">
                       <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">Aucun paiement</h3>
+                      <h3 className="text-lg font-semibold mb-2">
+                        {(searchQuery.trim() && (searchFilter === 'all' || searchFilter === 'paiements')) ? 'Aucun paiement trouvé' : 'Aucun paiement'}
+                      </h3>
                       <p className="text-muted-foreground">
-                        Vos paiements apparaîtront ici après les réservations payées
+                        {(searchQuery.trim() && (searchFilter === 'all' || searchFilter === 'paiements'))
+                          ? `Aucun paiement ne correspond à &quot;${searchQuery}&quot;`
+                          : 'Vos paiements apparaîtront ici après les réservations payées'}
                       </p>
+                      {searchQuery.trim() && (searchFilter === 'all' || searchFilter === 'paiements') && (
+                        <Button 
+                          variant="outline" 
+                          className="mt-4"
+                          onClick={() => {
+                            setSearchQuery('')
+                            setSearchFilter('all')
+                          }}
+                        >
+                          Effacer la recherche
+                        </Button>
+                      )}
                     </div>
                   ) : (
-                    paiements.map((paiement, index) => (
+                    <>
+                      {searchQuery.trim() && (searchFilter === 'all' || searchFilter === 'paiements') && paiementsFiltres.length > 0 && (
+                        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                          <p className="text-sm text-blue-800">
+                            <strong>{paiementsFiltres.length}</strong> paiement{paiementsFiltres.length > 1 ? 's' : ''} trouvé{paiementsFiltres.length > 1 ? 's' : ''} pour &quot;{searchQuery}&quot;
+                          </p>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => {
+                              setSearchQuery('')
+                              setSearchFilter('all')
+                            }}
+                            className="w-full sm:w-auto"
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Effacer
+                          </Button>
+                        </div>
+                      )}
+                      {paiementsFiltres.map((paiement, index) => (
                       <motion.div
                         key={paiement.id}
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.1, duration: 0.3 }}
                         whileHover={{ scale: 1.02, x: 4 }}
-                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border rounded-lg hover:shadow-md transition-shadow"
+                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4 border rounded-lg hover:shadow-md transition-shadow"
                       >
-                        <div>
-                          <p className="font-medium">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-base sm:text-lg">
                             {paiement.montant.toLocaleString()} FCFA
                           </p>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                             {new Date(paiement.date).toLocaleDateString('fr-FR')} • {paiement.methode.toUpperCase()}
                           </p>
                         </div>
-                        <div className="text-left sm:text-right w-full sm:w-auto">
-                          <Badge variant="secondary" className="mb-2 sm:mb-0">
+                        <div className="w-full sm:w-auto">
+                          <Badge variant="secondary" className="text-xs sm:text-sm">
                             Payé
                           </Badge>
                         </div>
                       </motion.div>
-                    ))
+                    ))}
+                    </>
                   )}
                 </div>
 
                 <div className="pt-4 border-t">
                   <h3 className="font-semibold mb-4">Demander un retrait</h3>
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="montant">Montant (FCFA)</Label>
                       <Input id="montant" type="number" placeholder="100000" />
@@ -1123,23 +1360,23 @@ export default function PrestataireDashboardPage() {
               className="space-y-4"
             >
               <motion.div 
-                className="mb-6"
+                className="mb-4 sm:mb-5 md:mb-6"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
               >
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
+                <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold tracking-tight mb-1 sm:mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
                   Statistiques 📈
                 </h2>
-                <p className="text-muted-foreground">
+                <p className="text-xs sm:text-sm md:text-base text-muted-foreground">
                   Analysez vos performances et vos données
                 </p>
               </motion.div>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
             <Card className="hover:shadow-lg transition-shadow duration-300">
               <CardHeader>
-                <CardTitle>Vues des offres</CardTitle>
-                <CardDescription>Évolution des vues sur 6 mois</CardDescription>
+                <CardTitle className="text-base sm:text-lg">Vues des offres</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Évolution des vues sur 6 mois</CardDescription>
               </CardHeader>
               <CardContent>
                 <LineChart
@@ -1162,8 +1399,8 @@ export default function PrestataireDashboardPage() {
 
             <Card className="hover:shadow-lg transition-shadow duration-300">
               <CardHeader>
-                <CardTitle>Réservations mensuelles</CardTitle>
-                <CardDescription>Nombre de réservations par mois</CardDescription>
+                <CardTitle className="text-base sm:text-lg">Réservations mensuelles</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Nombre de réservations par mois</CardDescription>
               </CardHeader>
               <CardContent>
                 <BarChart
@@ -1184,11 +1421,11 @@ export default function PrestataireDashboardPage() {
             </Card>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
             <Card className="hover:shadow-lg transition-shadow duration-300">
               <CardHeader>
-                <CardTitle>Revenus mensuels</CardTitle>
-                <CardDescription>Évolution des revenus sur 6 mois</CardDescription>
+                <CardTitle className="text-base sm:text-lg">Revenus mensuels</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Évolution des revenus sur 6 mois</CardDescription>
               </CardHeader>
               <CardContent>
                 <LineChart
@@ -1211,8 +1448,8 @@ export default function PrestataireDashboardPage() {
 
             <Card className="hover:shadow-lg transition-shadow duration-300">
               <CardHeader>
-                <CardTitle>Répartition des réservations</CardTitle>
-                <CardDescription>Par statut de réservation</CardDescription>
+                <CardTitle className="text-base sm:text-lg">Répartition des réservations</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Par statut de réservation</CardDescription>
               </CardHeader>
               <CardContent>
                 <DoughnutChart
@@ -1253,15 +1490,15 @@ export default function PrestataireDashboardPage() {
               className="space-y-4"
             >
               <motion.div 
-                className="mb-6"
+                className="mb-4 sm:mb-5 md:mb-6"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
               >
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
+                <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold tracking-tight mb-1 sm:mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
                   Mon Abonnement 💳
                 </h2>
-                <p className="text-muted-foreground">
+                <p className="text-xs sm:text-sm md:text-base text-muted-foreground">
                   Gérez votre plan d&apos;abonnement et accédez à plus de fonctionnalités
                 </p>
               </motion.div>
@@ -1276,7 +1513,7 @@ export default function PrestataireDashboardPage() {
                   <CardDescription>Votre abonnement actuel et ses avantages</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-lg border border-orange-200">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 p-3 sm:p-4 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-lg border border-orange-200">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <Badge variant="outline" className="text-lg font-semibold">
@@ -1294,7 +1531,7 @@ export default function PrestataireDashboardPage() {
                     </div>
                   </div>
 
-                  <div className="grid gap-3 md:grid-cols-3">
+                  <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
                     <div className="p-3 border rounded-lg">
                       <div className="text-sm font-medium mb-1">Expériences</div>
                       <div className="text-2xl font-bold">5 / 5</div>
@@ -1323,7 +1560,7 @@ export default function PrestataireDashboardPage() {
                   <CardDescription>Upgradez pour débloquer plus de fonctionnalités</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
                     {/* Plan Pro */}
                     <Card className="border-2 hover:border-orange-500 transition-colors">
                       <CardHeader>
@@ -1448,15 +1685,15 @@ export default function PrestataireDashboardPage() {
               className="space-y-4"
             >
               <motion.div 
-                className="mb-6"
+                className="mb-4 sm:mb-5 md:mb-6"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
               >
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
+                <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold tracking-tight mb-1 sm:mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
                   Boosts 🚀
                 </h2>
-                <p className="text-muted-foreground">
+                <p className="text-xs sm:text-sm md:text-base text-muted-foreground">
                   Augmentez la visibilité de vos offres avec nos boosts
                 </p>
               </motion.div>
@@ -1472,15 +1709,15 @@ export default function PrestataireDashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    <div className="p-4 border rounded-lg bg-gradient-to-r from-yellow-50 to-orange-50">
-                      <div className="flex items-center justify-between mb-2">
+                    <div className="p-3 sm:p-4 border rounded-lg bg-gradient-to-r from-yellow-50 to-orange-50">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 mb-2">
                         <div>
-                          <div className="font-semibold">Tour guidé Dakar</div>
-                          <div className="text-sm text-muted-foreground">Boost Expérience - 7 jours</div>
+                          <div className="font-semibold text-sm sm:text-base">Tour guidé Dakar</div>
+                          <div className="text-xs sm:text-sm text-muted-foreground">Boost Expérience - 7 jours</div>
                         </div>
-                        <Badge className="bg-green-500">Actif</Badge>
+                        <Badge className="bg-green-500 text-xs sm:text-sm">Actif</Badge>
                       </div>
-                      <div className="flex items-center gap-4 mt-3 text-sm">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 mt-3 text-xs sm:text-sm">
                         <div>
                           <span className="text-muted-foreground">Début:</span> 15/03/2024
                         </div>
@@ -1506,7 +1743,7 @@ export default function PrestataireDashboardPage() {
                   <CardDescription>Augmentez la visibilité de vos offres</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="boostType">Type de boost</Label>
                       <Select value={boostType} onValueChange={(value) => setBoostType(value as typeof boostType)}>
@@ -1522,21 +1759,21 @@ export default function PrestataireDashboardPage() {
                       </Select>
                     </div>
                     {boostType === 'EXPERIENCE' && (
-                      <div className="space-y-2">
+                    <div className="space-y-2">
                         <Label htmlFor="boostOffre">Expérience</Label>
                         <Select value={selectedOffreId} onValueChange={setSelectedOffreId}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Sélectionner une expérience" />
-                          </SelectTrigger>
-                          <SelectContent>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner une expérience" />
+                        </SelectTrigger>
+                        <SelectContent>
                             {mesOffres.map((offre) => (
                               <SelectItem key={offre.id} value={offre.id}>
                                 {offre.titre}
                               </SelectItem>
                             ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     )}
                     <div className="space-y-2">
                       <Label htmlFor="boostDuree">Durée</Label>
@@ -1546,7 +1783,7 @@ export default function PrestataireDashboardPage() {
                         </SelectTrigger>
                         <SelectContent>
                           {boostType === 'EXPERIENCE' && (
-                            <SelectItem value="jour">1 jour - 1 000 FCFA</SelectItem>
+                          <SelectItem value="jour">1 jour - 1 000 FCFA</SelectItem>
                           )}
                           <SelectItem value="semaine">7 jours - {boostType === 'EXPERIENCE' ? '6 000' : boostType === 'REGIONAL' ? '5 000' : '3 000'} FCFA</SelectItem>
                           <SelectItem value="mois">30 jours - {boostType === 'EXPERIENCE' ? '15 000' : boostType === 'REGIONAL' ? '15 000' : '10 000'} FCFA</SelectItem>
@@ -1554,21 +1791,21 @@ export default function PrestataireDashboardPage() {
                       </Select>
                     </div>
                   </div>
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-center justify-between">
+                  <div className="p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
                       <div>
-                        <div className="font-semibold">Prix total</div>
-                        <div className="text-sm text-muted-foreground">Montant à payer</div>
+                        <div className="font-semibold text-sm sm:text-base">Prix total</div>
+                        <div className="text-xs sm:text-sm text-muted-foreground">Montant à payer</div>
                       </div>
-                      <div className="text-2xl font-bold">
+                      <div className="text-xl sm:text-2xl font-bold">
                         {boostType === 'EXPERIENCE' 
                           ? (boostDuree === 'jour' ? '1 000' : boostDuree === 'semaine' ? '6 000' : '15 000')
                           : boostType === 'REGIONAL'
                           ? (boostDuree === 'semaine' ? '5 000' : '15 000')
                           : (boostDuree === 'semaine' ? '3 000' : '10 000')
                         } FCFA
-                      </div>
                     </div>
+                  </div>
                   </div>
                   <Button 
                     className="w-full" 
@@ -1627,9 +1864,9 @@ export default function PrestataireDashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="p-4 border rounded-lg">
-                      <div className="font-semibold mb-2">Boost d&apos;Expérience</div>
-                      <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="p-3 sm:p-4 border rounded-lg">
+                      <div className="font-semibold mb-2 text-sm sm:text-base">Boost d&apos;Expérience</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-xs sm:text-sm">
                         <div>
                           <div className="font-medium">1 jour</div>
                           <div className="text-muted-foreground">1 000 FCFA</div>
@@ -1676,6 +1913,32 @@ export default function PrestataireDashboardPage() {
             </motion.div>
           )}
 
+          {activeSection === 'parrainage' && (
+            <motion.div 
+              key="parrainage"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-4"
+            >
+              <motion.div 
+                className="mb-4 sm:mb-5 md:mb-6"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+              >
+                <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold tracking-tight mb-1 sm:mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
+                  Parrainage 🎁
+                </h2>
+                <p className="text-xs sm:text-sm md:text-base text-muted-foreground">
+                  Invitez d&apos;autres prestataires et gagnez des points convertibles en boosts
+                </p>
+              </motion.div>
+              <ReferralDashboard />
+            </motion.div>
+          )}
+
           {activeSection === 'parametres' && (
             <motion.div 
               key="parametres"
@@ -1686,15 +1949,15 @@ export default function PrestataireDashboardPage() {
               className="space-y-4"
             >
               <motion.div 
-                className="mb-6"
+                className="mb-4 sm:mb-5 md:mb-6"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
               >
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
+                <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold tracking-tight mb-1 sm:mb-2 bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
                   Paramètres ⚙️
                 </h2>
-                <p className="text-muted-foreground">
+                <p className="text-xs sm:text-sm md:text-base text-muted-foreground">
                   Gérez vos informations de prestataire
                 </p>
               </motion.div>
@@ -1713,7 +1976,7 @@ export default function PrestataireDashboardPage() {
                     />
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="nomEntreprise">Nom de l&apos;entreprise</Label>
                       <Input id="nomEntreprise" defaultValue="Mon Hôtel" />
@@ -1786,7 +2049,7 @@ export default function PrestataireDashboardPage() {
 
           </div>
         </main>
-      </div>
+              </div>
     </div>
   )
 }

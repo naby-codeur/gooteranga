@@ -2,6 +2,11 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse, handleApiError } from '@/lib/api/response'
 import { requireRole } from '@/lib/api/auth'
+import Stripe from 'stripe'
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2025-11-17.clover',
+})
 
 // Types pour les résultats Prisma
 type Prestataire = {
@@ -180,43 +185,112 @@ export async function POST(request: NextRequest) {
       dateFin.setMonth(dateFin.getMonth() + 1)
     }
 
-    // Créer le boost
-    const boost = await prisma.boost.create({
-      data: {
-        prestataireId: prestataire.id,
-        offreId: type === 'EXPERIENCE' ? offreId : null,
-        type,
-        region: type === 'REGIONAL' ? region : null,
-        categorie: type === 'CATEGORIE' ? categorie : null,
-        montant,
-        dateDebut,
-        dateFin,
-        isActive: true,
-        methode: methode || 'stripe',
-        transactionId,
-      },
-      include: {
-        offre: {
-          select: {
-            id: true,
-            titre: true,
-          },
-        },
-      },
-    }) as Boost
+    const paymentMethod = methode || 'stripe'
 
-    // Si c'est un boost d'expérience, marquer l'offre comme featured
-    if (type === 'EXPERIENCE' && offreId) {
-      await prisma.offre.update({
-        where: { id: offreId },
-        data: {
-          isFeatured: true,
-          featuredExpiresAt: dateFin,
+    // Si paiement via Stripe
+    if (paymentMethod === 'stripe') {
+      // Récupérer les informations utilisateur
+      const prestataireWithUser = await prisma.prestataire.findUnique({
+        where: { id: prestataire.id },
+        include: {
+          user: true,
         },
+      }) as Prestataire & { user: { email: string } } | null
+
+      if (!prestataireWithUser) {
+        return errorResponse('Prestataire non trouvé', 404)
+      }
+
+      // Créer une session Checkout Stripe pour le boost
+      // Stripe Checkout supporte automatiquement : Visa, Mastercard, AMEX, Apple Pay, Google Pay
+      const checkoutSession = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        customer_email: prestataireWithUser.user.email || user.email,
+        line_items: [
+          {
+            price_data: {
+              currency: 'xof',
+              product_data: {
+                name: `Boost ${type} - ${duree}`,
+                description: `Boost ${type} pour ${duree}`,
+              },
+              unit_amount: Math.round(montant * 100), // Convertir en centimes
+            },
+            quantity: 1,
+          },
+        ],
+        payment_method_types: ['card'], // Supporte Visa, Mastercard, AMEX
+        // Apple Pay et Google Pay sont automatiquement activés si configurés dans Stripe Dashboard
+        success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/prestataire?boost=success`,
+        cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/prestataire?boost=cancel`,
+        metadata: {
+          prestataireId: prestataire.id,
+          type,
+          duree,
+          offreId: offreId || '',
+          region: region || '',
+          categorie: categorie || '',
+          dateDebut: dateDebut.toISOString(),
+          dateFin: dateFin.toISOString(),
+          userId: user.id,
+        },
+      })
+
+      // Retourner l'URL de checkout (le boost sera créé après le paiement via webhook)
+      return successResponse({
+        checkoutUrl: checkoutSession.url,
+        checkoutSessionId: checkoutSession.id,
+        paymentMethods: ['visa', 'mastercard', 'amex', 'apple_pay', 'google_pay'],
+        message: 'Redirigez l\'utilisateur vers l\'URL de checkout pour finaliser le paiement',
       })
     }
 
-    return successResponse(boost, 'Boost créé avec succès', 201)
+    // Si paiement cash, créer directement le boost
+    if (paymentMethod === 'cash') {
+      if (!transactionId) {
+        return errorResponse('transactionId requis pour le paiement cash', 400)
+      }
+
+      // Créer le boost
+      const boost = await prisma.boost.create({
+        data: {
+          prestataireId: prestataire.id,
+          offreId: type === 'EXPERIENCE' ? offreId : null,
+          type,
+          region: type === 'REGIONAL' ? region : null,
+          categorie: type === 'CATEGORIE' ? categorie : null,
+          montant,
+          dateDebut,
+          dateFin,
+          isActive: true,
+          methode: 'cash',
+          transactionId,
+        },
+        include: {
+          offre: {
+            select: {
+              id: true,
+              titre: true,
+            },
+          },
+        },
+      }) as Boost
+
+      // Si c'est un boost d'expérience, marquer l'offre comme featured
+      if (type === 'EXPERIENCE' && offreId) {
+        await prisma.offre.update({
+          where: { id: offreId },
+          data: {
+            isFeatured: true,
+            featuredExpiresAt: dateFin,
+          },
+        })
+      }
+
+      return successResponse(boost, 'Boost créé avec succès (paiement cash)', 201)
+    }
+
+    return errorResponse('Méthode de paiement non supportée. Utilisez "stripe" ou "cash"', 400)
   } catch (error) {
     return handleApiError(error)
   }

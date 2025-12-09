@@ -9,20 +9,46 @@ export interface ApiResponse<T = unknown> {
 
 /**
  * Crée une réponse API réussie
+ * NextResponse.json() sérialise automatiquement les Dates et autres types
  */
 export function successResponse<T>(
   data: T,
   message?: string,
   status: number = 200
 ): NextResponse<ApiResponse<T>> {
-  return NextResponse.json(
-    {
-      success: true,
-      data,
-      message,
-    },
-    { status }
-  )
+  try {
+    return NextResponse.json(
+      {
+        success: true,
+        data,
+        message,
+      },
+      { status }
+    )
+  } catch (error) {
+    console.error('Error creating response:', error)
+    // En cas d'erreur, essayer de sérialiser manuellement
+    try {
+      const serialized = JSON.parse(JSON.stringify(data))
+      return NextResponse.json(
+        {
+          success: true,
+          data: serialized,
+          message,
+        },
+        { status }
+      )
+    } catch (serializeError) {
+      console.error('Error serializing data:', serializeError)
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Erreur lors de la sérialisation des données',
+        },
+        { status: 500 }
+      )
+    }
+  }
 }
 
 /**

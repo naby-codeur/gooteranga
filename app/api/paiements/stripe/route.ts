@@ -78,14 +78,37 @@ export async function POST(request: NextRequest) {
       return errorResponse('Cette réservation a déjà été payée', 400)
     }
 
-    // Créer le PaymentIntent Stripe
+    // Récupérer le prestataire pour vérifier son compte Stripe Connect
+    const prestataire = await prisma.prestataire.findUnique({
+      where: { id: reservation.prestataireId },
+    }) as { id: string; stripeAccountId: string | null; stripeOnboardingCompleted: boolean } | null
+
+    if (!prestataire) {
+      return errorResponse('Prestataire non trouvé', 404)
+    }
+
+    // Vérifier que le prestataire a un compte Stripe Connect configuré
+    if (!prestataire.stripeAccountId || !prestataire.stripeOnboardingCompleted) {
+      return errorResponse('Le prestataire n\'a pas encore configuré son compte de paiement. Veuillez contacter le prestataire ou choisir le paiement en espèces.', 400)
+    }
+
+    // Créer le PaymentIntent Stripe avec Stripe Connect Standard
+    // L'argent va directement au compte du prestataire (on_behalf_of + transfer_data)
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(Number(reservation.montant) * 100), // Convertir en centimes
       currency: 'xof', // Franc CFA
+      // Stripe Connect : paiement direct au prestataire
+      on_behalf_of: prestataire.stripeAccountId,
+      transfer_data: {
+        destination: prestataire.stripeAccountId,
+      },
+      // Application fee = 0 (GooTeranga ne prend pas de commission)
+      application_fee_amount: 0,
       metadata: {
         reservationId,
         userId: user.id,
         offreId: reservation.offreId,
+        prestataireId: prestataire.id,
       },
       description: `Réservation: ${reservation.offre.titre}`,
     })
@@ -112,6 +135,8 @@ export async function POST(request: NextRequest) {
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,
       paiement,
+      paymentMethods: ['visa', 'mastercard', 'amex', 'apple_pay', 'google_pay'],
+      message: 'Méthodes de paiement supportées : Visa, Mastercard, AMEX, Apple Pay, Google Pay',
     })
   } catch (error) {
     return handleApiError(error)

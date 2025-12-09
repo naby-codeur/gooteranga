@@ -27,6 +27,7 @@ import {
 export default function HomePage() {
   const [currentBgIndex, setCurrentBgIndex] = useState(0)
   const [categoryImageIndices, setCategoryImageIndices] = useState<Record<number, number>>({})
+  const [featuredDestinationIndex, setFeaturedDestinationIndex] = useState(0)
   
   // Images de fond pour le carrousel
   const backgroundImages = Array.from({ length: 10 }, (_, i) => `/images/ba${i + 1}.png`)
@@ -59,6 +60,15 @@ export default function HomePage() {
     return () => {
       intervals.forEach(interval => clearInterval(interval))
     }
+  }, [backgroundImages.length])
+
+  // Carrousel automatique pour les destinations en vedette (10 images)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFeaturedDestinationIndex((prev) => (prev + 1) % backgroundImages.length)
+    }, 4000) // Change d'image toutes les 4 secondes
+
+    return () => clearInterval(interval)
   }, [backgroundImages.length])
 
   const experiences = [
@@ -119,14 +129,6 @@ export default function HomePage() {
   ]
 
 
-  const destinations = [
-    { name: 'Dakar', image: '/destinations/dakar.jpg', count: '150+ offres' },
-    { name: 'Saly', image: '/destinations/saly.jpg', count: '80+ offres' },
-    { name: 'Saint-Louis', image: '/destinations/saint-louis.jpg', count: '70+ offres' },
-    { name: 'Casamance', image: '/destinations/casamance.jpg', count: '90+ offres' },
-    { name: 'Lompoul', image: '/destinations/lompoul.jpg', count: '40+ offres' },
-    { name: 'Toubacouta', image: '/destinations/toubacouta.jpg', count: '35+ offres' },
-  ]
 
   // Logos des collaborateurs
   const partners = [
@@ -230,7 +232,7 @@ export default function HomePage() {
       </section>
 
       {/* Section 2: Catégories principales */}
-      <section className="mx-[10%] py-16 md:py-24">
+      <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
             Explorez par catégorie
@@ -283,7 +285,7 @@ export default function HomePage() {
 
       {/* Section 3: Expériences populaires - Carrousel automatique infini */}
       <section className="bg-muted/50 py-16 md:py-24 overflow-hidden">
-        <div className="mx-[10%]">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-12">
             <div>
               <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
@@ -346,42 +348,63 @@ export default function HomePage() {
       </section>
 
       {/* Section 4: Destinations en vedette */}
-      <section className="relative py-16 md:py-24 overflow-hidden">
-        {/* Image de fond pour toute la section */}
-        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: 'url(/images/ba1.png)' }}></div>
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/40"></div>
-        
-        <div className="mx-[10%] relative z-10">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl text-white">
-              Destinations en vedette
-            </h2>
-            <p className="mt-4 text-lg text-white/90 max-w-2xl mx-auto">
-              Découvrez les plus belles régions du Sénégal
-            </p>
-          </div>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {destinations.map((destination, index) => (
-              <Link key={index} href={`/explorer?destination=${destination.name.toLowerCase()}`}>
-                <Card className="overflow-hidden group hover:shadow-xl transition-all duration-300 cursor-pointer h-full bg-white/95 backdrop-blur-sm">
-                  <div className="relative h-64 bg-cover bg-center" style={{ backgroundImage: 'url(/images/ba1.png)' }}>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
-                    <div className="absolute bottom-0 left-0 right-0 p-6">
-                      <h3 className="text-2xl font-bold text-white mb-1">{destination.name}</h3>
-                      <p className="text-sm text-white/90">{destination.count}</p>
-                    </div>
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors"></div>
-                  </div>
-                </Card>
-              </Link>
+      <section className="relative py-16 md:py-24 overflow-hidden flex items-center justify-center">
+        <div className="w-full flex items-center justify-center">
+          <div className="relative w-[86%] h-[86vh] max-h-[800px] rounded-2xl overflow-hidden shadow-2xl">
+            {/* Carrousel d'images automatique */}
+            {backgroundImages.map((image, index) => (
+              <div
+                key={index}
+                className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out ${
+                  index === featuredDestinationIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                }`}
+                style={{
+                  backgroundImage: `url(${image})`,
+                }}
+              />
             ))}
+            {/* Overlay gradient */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/50 z-20"></div>
+            
+            {/* Contenu centré */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center z-30 text-center px-6">
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl lg:text-6xl text-white mb-4 drop-shadow-lg">
+                Destinations en vedette
+              </h2>
+              <p className="text-lg sm:text-xl text-white/90 max-w-2xl mb-6 drop-shadow-md">
+                Découvrez les plus belles régions du Sénégal
+              </p>
+              
+              {/* Bouton Consulter */}
+              <Button asChild size="lg" className="bg-white text-teranga-orange hover:bg-orange-50 text-lg px-8 py-6 h-auto shadow-xl font-semibold">
+                <Link href="/regions">
+                  Consulter
+                </Link>
+              </Button>
+              
+              {/* Indicateurs de pagination */}
+              <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex gap-2 z-40">
+                {backgroundImages.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setFeaturedDestinationIndex(index)}
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      index === featuredDestinationIndex
+                        ? 'w-8 bg-white'
+                        : 'w-2 bg-white/50 hover:bg-white/75'
+                    }`}
+                    aria-label={`Aller à l'image ${index + 1}`}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Section 5: Pourquoi GooTeranga ? */}
       <section className="bg-gradient-to-br from-[#FFF8E1] via-[#FFF9C4] to-[#FFE0B2] dark:from-orange-950 dark:via-yellow-950 dark:to-orange-900 py-16 md:py-24">
-        <div className="mx-[10%]">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
               Pourquoi GooTeranga ?
@@ -420,7 +443,7 @@ export default function HomePage() {
       {/* Section 6: CTA "Devenir Guide" */}
       <section className="relative py-20 md:py-28 overflow-hidden">
         <div className="absolute inset-0 bg-gooteranga-orange-gradient"></div>
-        <div className="mx-[10%] relative z-10">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
             <Sun className="h-16 w-16 text-red-500 mx-auto mb-6 animate-pulse" />
             <h2 className="text-4xl font-bold text-white sm:text-5xl md:text-6xl mb-6">

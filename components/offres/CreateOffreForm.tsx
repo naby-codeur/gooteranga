@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,7 +16,6 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import {
-  Upload,
   X,
   Image as ImageIcon,
   Video,
@@ -23,6 +23,16 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle,
+  MapPin,
+  Tag,
+  Calendar,
+  Clock,
+  Users,
+  DollarSign,
+  Globe,
+  Building,
+  Navigation,
+  Plus,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -45,10 +55,22 @@ export function CreateOffreForm({ offreId, onSuccess, onCancel }: CreateOffreFor
     region: '',
     ville: '',
     adresse: '',
+    latitude: '',
+    longitude: '',
     prix: '',
-    prixUnite: '',
+    prixUnite: 'personne',
     duree: '',
     capacite: '',
+    tags: [] as string[],
+    disponibilite: {
+      lundi: { ouvert: true, heures: { debut: '09:00', fin: '18:00' } },
+      mardi: { ouvert: true, heures: { debut: '09:00', fin: '18:00' } },
+      mercredi: { ouvert: true, heures: { debut: '09:00', fin: '18:00' } },
+      jeudi: { ouvert: true, heures: { debut: '09:00', fin: '18:00' } },
+      vendredi: { ouvert: true, heures: { debut: '09:00', fin: '18:00' } },
+      samedi: { ouvert: true, heures: { debut: '09:00', fin: '18:00' } },
+      dimanche: { ouvert: false, heures: { debut: '09:00', fin: '18:00' } },
+    },
   })
 
   const [images, setImages] = useState<File[]>([])
@@ -59,6 +81,26 @@ export function CreateOffreForm({ offreId, onSuccess, onCancel }: CreateOffreFor
 
   const [boostEnabled, setBoostEnabled] = useState(false)
   const [boostDuree, setBoostDuree] = useState<'jour' | 'semaine' | 'mois'>('semaine')
+  const [selectedTag, setSelectedTag] = useState('')
+  
+  // Tags disponibles selon le type d'offre
+  const availableTags = {
+    HEBERGEMENT: ['Hôtel', 'Auberge', 'Villa', 'Appartement', 'Camping', 'Eco-lodge', 'Résidence'],
+    GUIDE: ['Culture', 'Histoire', 'Nature', 'Gastronomie', 'Aventure', 'Religieux', 'Architecture'],
+    ACTIVITE: ['Plage', 'Sport', 'Détente', 'Aventure', 'Culture', 'Nature', 'Famille', 'Romantique'],
+    RESTAURANT: ['Traditionnel', 'Moderne', 'Fast-food', 'Gastronomique', 'Végétarien', 'Halal', 'Bar'],
+    CULTURE: ['Musée', 'Monument', 'Art', 'Musique', 'Danse', 'Théâtre', 'Festival'],
+    EVENEMENT: ['Concert', 'Festival', 'Conférence', 'Exposition', 'Spectacle', 'Sport'],
+  }
+  
+  const prixUniteOptions = {
+    HEBERGEMENT: ['nuit', 'semaine', 'mois'],
+    GUIDE: ['personne', 'groupe', 'jour'],
+    ACTIVITE: ['personne', 'groupe', 'session'],
+    RESTAURANT: ['personne', 'plat', 'menu'],
+    CULTURE: ['personne', 'groupe', 'visite'],
+    EVENEMENT: ['personne', 'billet', 'groupe'],
+  }
 
   const MAX_IMAGES = 3
   const MIN_VIDEO_DURATION = 15 // secondes
@@ -167,6 +209,16 @@ export function CreateOffreForm({ offreId, onSuccess, onCancel }: CreateOffreFor
           
           if (response.ok && data.success && data.data) {
             const offre = data.data
+            const defaultDisponibilite = {
+              lundi: { ouvert: true, heures: { debut: '09:00', fin: '18:00' } },
+              mardi: { ouvert: true, heures: { debut: '09:00', fin: '18:00' } },
+              mercredi: { ouvert: true, heures: { debut: '09:00', fin: '18:00' } },
+              jeudi: { ouvert: true, heures: { debut: '09:00', fin: '18:00' } },
+              vendredi: { ouvert: true, heures: { debut: '09:00', fin: '18:00' } },
+              samedi: { ouvert: true, heures: { debut: '09:00', fin: '18:00' } },
+              dimanche: { ouvert: false, heures: { debut: '09:00', fin: '18:00' } },
+            }
+            
             setFormData({
               titre: offre.titre || '',
               description: offre.description || '',
@@ -174,10 +226,14 @@ export function CreateOffreForm({ offreId, onSuccess, onCancel }: CreateOffreFor
               region: offre.region || '',
               ville: offre.ville || '',
               adresse: offre.adresse || '',
+              latitude: offre.latitude ? String(offre.latitude) : '',
+              longitude: offre.longitude ? String(offre.longitude) : '',
               prix: String(offre.prix || ''),
-              prixUnite: offre.prixUnite || '',
+              prixUnite: offre.prixUnite || 'personne',
               duree: offre.duree ? String(offre.duree) : '',
               capacite: offre.capacite ? String(offre.capacite) : '',
+              tags: offre.tags || [],
+              disponibilite: offre.disponibilite || defaultDisponibilite,
             })
             
             // Charger les médias existants
@@ -259,12 +315,16 @@ export function CreateOffreForm({ offreId, onSuccess, onCancel }: CreateOffreFor
         region: formData.region || null,
         ville: formData.ville || null,
         adresse: formData.adresse || null,
+        latitude: formData.latitude ? parseFloat(formData.latitude) : null,
+        longitude: formData.longitude ? parseFloat(formData.longitude) : null,
         prix: parseFloat(formData.prix),
-        prixUnite: formData.prixUnite || null,
+        prixUnite: formData.prixUnite || 'personne',
         images: imageUrls,
         videos: videoUrls,
         duree: formData.duree ? parseInt(formData.duree) : null,
         capacite: formData.capacite ? parseInt(formData.capacite) : null,
+        tags: formData.tags,
+        disponibilite: formData.disponibilite,
       }
 
       const url = offreId ? `/api/offres/${offreId}` : '/api/offres'
@@ -352,79 +412,433 @@ export function CreateOffreForm({ offreId, onSuccess, onCancel }: CreateOffreFor
       </AnimatePresence>
 
       {/* Informations de base */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Informations de base</CardTitle>
+      <Card className="border-2">
+        <CardHeader className="bg-gradient-to-r from-orange-50 to-yellow-50 border-b">
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <Building className="h-6 w-6 text-orange-600" />
+            Informations de base
+          </CardTitle>
+          <CardDescription>
+            Les informations essentielles de votre offre
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6 pt-6">
           <div className="space-y-2">
-            <Label htmlFor="titre">Titre *</Label>
+            <Label htmlFor="titre" className="text-base font-semibold flex items-center gap-2">
+              <span>Titre de l&apos;offre *</span>
+            </Label>
             <Input
               id="titre"
               value={formData.titre}
               onChange={(e) => setFormData({ ...formData, titre: e.target.value })}
+              placeholder="Ex: Visite guidée de l&apos;Île de Gorée"
+              className="h-11"
               required
             />
+            <p className="text-xs text-muted-foreground">Un titre accrocheur augmente vos réservations</p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description *</Label>
+            <Label htmlFor="description" className="text-base font-semibold">Description détaillée *</Label>
             <Textarea
               id="description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={5}
+              rows={6}
+              placeholder="Décrivez votre offre en détail. Mentionnez les points forts, les activités incluses, ce qui rend votre offre unique..."
+              className="resize-none"
               required
             />
+            <p className="text-xs text-muted-foreground">{formData.description.length}/2000 caractères</p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="type">Type *</Label>
+              <Label htmlFor="type" className="text-base font-semibold flex items-center gap-2">
+                <Tag className="h-4 w-4" />
+                Type d&apos;offre *
+              </Label>
               <Select
                 value={formData.type}
-                onValueChange={(value) => setFormData({ ...formData, type: value as OffreType })}
+                onValueChange={(value) => {
+                  setFormData({ 
+                    ...formData, 
+                    type: value as OffreType,
+                    prixUnite: prixUniteOptions[value as OffreType]?.[0] || 'personne',
+                    tags: []
+                  })
+                }}
                 required
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-11">
                   <SelectValue placeholder="Sélectionner un type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="HEBERGEMENT">Hébergement</SelectItem>
-                  <SelectItem value="GUIDE">Guide</SelectItem>
-                  <SelectItem value="ACTIVITE">Activité</SelectItem>
-                  <SelectItem value="RESTAURANT">Restaurant</SelectItem>
-                  <SelectItem value="CULTURE">Culture</SelectItem>
-                  <SelectItem value="EVENEMENT">Événement</SelectItem>
+                  <SelectItem value="HEBERGEMENT">🏨 Hébergement</SelectItem>
+                  <SelectItem value="GUIDE">🗺️ Guide touristique</SelectItem>
+                  <SelectItem value="ACTIVITE">🎯 Activité</SelectItem>
+                  <SelectItem value="RESTAURANT">🍽️ Restaurant</SelectItem>
+                  <SelectItem value="CULTURE">🎭 Culture</SelectItem>
+                  <SelectItem value="EVENEMENT">🎪 Événement</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="prix">Prix (FCFA) *</Label>
+              <Label htmlFor="prix" className="text-base font-semibold flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Prix (FCFA) *
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  id="prix"
+                  type="number"
+                  min="0"
+                  step="100"
+                  value={formData.prix}
+                  onChange={(e) => setFormData({ ...formData, prix: e.target.value })}
+                  placeholder="0"
+                  className="h-11 flex-1"
+                  required
+                />
+                {formData.type && (
+                  <Select
+                    value={formData.prixUnite}
+                    onValueChange={(value) => setFormData({ ...formData, prixUnite: value })}
+                  >
+                    <SelectTrigger className="h-11 w-[140px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {prixUniteOptions[formData.type as OffreType]?.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option === 'personne' ? 'Par personne' :
+                           option === 'nuit' ? 'Par nuit' :
+                           option === 'groupe' ? 'Par groupe' :
+                           option === 'jour' ? 'Par jour' :
+                           option === 'semaine' ? 'Par semaine' :
+                           option === 'mois' ? 'Par mois' :
+                           option === 'session' ? 'Par session' :
+                           option === 'plat' ? 'Par plat' :
+                           option === 'menu' ? 'Par menu' :
+                           option === 'visite' ? 'Par visite' :
+                           option === 'billet' ? 'Par billet' :
+                           option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Tags */}
+          {formData.type && (
+            <div className="space-y-3">
+              <Label className="text-base font-semibold flex items-center gap-2">
+                <Tag className="h-4 w-4" />
+                Tags / Catégories
+              </Label>
+              <div className="flex flex-wrap gap-2">
+                {formData.tags.map((tag, index) => (
+                  <Badge key={index} variant="secondary" className="px-3 py-1.5 text-sm">
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, tags: formData.tags.filter((_, i) => i !== index) })}
+                      className="ml-2 hover:text-red-600"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+              {availableTags[formData.type as OffreType] && (
+                <div className="flex gap-2">
+                  <Select value={selectedTag} onValueChange={setSelectedTag}>
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="Ajouter un tag" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableTags[formData.type as OffreType]
+                        .filter(tag => !formData.tags.includes(tag))
+                        .map((tag) => (
+                          <SelectItem key={tag} value={tag}>
+                            {tag}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      if (selectedTag && !formData.tags.includes(selectedTag)) {
+                        setFormData({ ...formData, tags: [...formData.tags, selectedTag] })
+                        setSelectedTag('')
+                      }
+                    }}
+                    disabled={!selectedTag}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Ajouter
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Localisation */}
+      <Card className="border-2">
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50 border-b">
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <MapPin className="h-6 w-6 text-blue-600" />
+            Localisation
+          </CardTitle>
+          <CardDescription>
+            Où se trouve votre offre ?
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-6">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="region" className="flex items-center gap-2">
+                <Globe className="h-4 w-4" />
+                Région *
+              </Label>
+              <Select
+                value={formData.region}
+                onValueChange={(value) => setFormData({ ...formData, region: value })}
+              >
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder="Sélectionner une région" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Dakar">Dakar</SelectItem>
+                  <SelectItem value="Thiès">Thiès</SelectItem>
+                  <SelectItem value="Saint-Louis">Saint-Louis</SelectItem>
+                  <SelectItem value="Ziguinchor">Ziguinchor</SelectItem>
+                  <SelectItem value="Tambacounda">Tambacounda</SelectItem>
+                  <SelectItem value="Kaolack">Kaolack</SelectItem>
+                  <SelectItem value="Kolda">Kolda</SelectItem>
+                  <SelectItem value="Matam">Matam</SelectItem>
+                  <SelectItem value="Fatick">Fatick</SelectItem>
+                  <SelectItem value="Louga">Louga</SelectItem>
+                  <SelectItem value="Sédhiou">Sédhiou</SelectItem>
+                  <SelectItem value="Kédougou">Kédougou</SelectItem>
+                  <SelectItem value="Diourbel">Diourbel</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="ville">Ville</Label>
               <Input
-                id="prix"
+                id="ville"
+                value={formData.ville}
+                onChange={(e) => setFormData({ ...formData, ville: e.target.value })}
+                placeholder="Ex: Dakar"
+                className="h-11"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="adresse">Adresse complète</Label>
+              <Input
+                id="adresse"
+                value={formData.adresse}
+                onChange={(e) => setFormData({ ...formData, adresse: e.target.value })}
+                placeholder="Ex: Avenue Léopold Sédar Senghor"
+                className="h-11"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="latitude" className="flex items-center gap-2">
+                <Navigation className="h-4 w-4" />
+                Latitude (optionnel)
+              </Label>
+              <Input
+                id="latitude"
+                type="number"
+                step="any"
+                value={formData.latitude}
+                onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                placeholder="14.7167"
+                className="h-11"
+              />
+              <p className="text-xs text-muted-foreground">Pour la géolocalisation précise</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="longitude" className="flex items-center gap-2">
+                <Navigation className="h-4 w-4" />
+                Longitude (optionnel)
+              </Label>
+              <Input
+                id="longitude"
+                type="number"
+                step="any"
+                value={formData.longitude}
+                onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                placeholder="-17.4677"
+                className="h-11"
+              />
+              <p className="text-xs text-muted-foreground">Pour la géolocalisation précise</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Détails supplémentaires */}
+      <Card className="border-2">
+        <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b">
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <Clock className="h-6 w-6 text-green-600" />
+            Détails supplémentaires
+          </CardTitle>
+          <CardDescription>
+            Informations complémentaires sur votre offre
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-6">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="duree" className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Durée {formData.type === 'HEBERGEMENT' ? '(nuits)' : '(heures)'}
+              </Label>
+              <Input
+                id="duree"
                 type="number"
                 min="0"
-                step="0.01"
-                value={formData.prix}
-                onChange={(e) => setFormData({ ...formData, prix: e.target.value })}
-                required
+                value={formData.duree}
+                onChange={(e) => setFormData({ ...formData, duree: e.target.value })}
+                placeholder={formData.type === 'HEBERGEMENT' ? "Ex: 3" : "Ex: 4"}
+                className="h-11"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="capacite" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Capacité (personnes)
+              </Label>
+              <Input
+                id="capacite"
+                type="number"
+                min="1"
+                value={formData.capacite}
+                onChange={(e) => setFormData({ ...formData, capacite: e.target.value })}
+                placeholder="Ex: 10"
+                className="h-11"
               />
             </div>
           </div>
         </CardContent>
       </Card>
 
+      {/* Disponibilité */}
+      <Card className="border-2">
+        <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b">
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <Calendar className="h-6 w-6 text-purple-600" />
+            Disponibilité
+          </CardTitle>
+          <CardDescription>
+            Définissez les jours et horaires d&apos;ouverture
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-6">
+          {Object.entries(formData.disponibilite).map(([jour, data]) => (
+            <div key={jour} className="flex items-center gap-4 p-4 border rounded-lg">
+              <div className="flex items-center gap-3 flex-1">
+                <input
+                  type="checkbox"
+                  id={`jour-${jour}`}
+                  checked={data.ouvert}
+                  onChange={(e) => {
+                    setFormData({
+                      ...formData,
+                      disponibilite: {
+                        ...formData.disponibilite,
+                        [jour]: { ...data, ouvert: e.target.checked }
+                      }
+                    })
+                  }}
+                  className="h-4 w-4"
+                />
+                <Label htmlFor={`jour-${jour}`} className="font-medium capitalize cursor-pointer min-w-[100px]">
+                  {jour === 'lundi' ? 'Lundi' :
+                   jour === 'mardi' ? 'Mardi' :
+                   jour === 'mercredi' ? 'Mercredi' :
+                   jour === 'jeudi' ? 'Jeudi' :
+                   jour === 'vendredi' ? 'Vendredi' :
+                   jour === 'samedi' ? 'Samedi' :
+                   'Dimanche'}
+                </Label>
+              </div>
+              {data.ouvert && (
+                <div className="flex items-center gap-2 flex-1">
+                  <Input
+                    type="time"
+                    value={data.heures.debut}
+                    onChange={(e) => {
+                      setFormData({
+                        ...formData,
+                        disponibilite: {
+                          ...formData.disponibilite,
+                          [jour]: {
+                            ...data,
+                            heures: { ...data.heures, debut: e.target.value }
+                          }
+                        }
+                      })
+                    }}
+                    className="h-10"
+                  />
+                  <span className="text-muted-foreground">à</span>
+                  <Input
+                    type="time"
+                    value={data.heures.fin}
+                    onChange={(e) => {
+                      setFormData({
+                        ...formData,
+                        disponibilite: {
+                          ...formData.disponibilite,
+                          [jour]: {
+                            ...data,
+                            heures: { ...data.heures, fin: e.target.value }
+                          }
+                        }
+                      })
+                    }}
+                    className="h-10"
+                  />
+                </div>
+              )}
+              {!data.ouvert && (
+                <Badge variant="secondary" className="ml-auto">Fermé</Badge>
+              )}
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
       {/* Médias : Vidéo OU Images */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ImageIcon className="h-5 w-5" />
+      <Card className="border-2">
+        <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50 border-b">
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <ImageIcon className="h-6 w-6 text-indigo-600" />
             Médias
           </CardTitle>
           <CardDescription>
-            Choisissez soit une vidéo (15-60s) soit jusqu'à 3 images
+            Choisissez soit une vidéo (15-60s) soit jusqu&apos;à 3 images
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -484,11 +898,14 @@ export function CreateOffreForm({ offreId, onSuccess, onCancel }: CreateOffreFor
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {imagePreviews.map((preview, index) => (
                     <div key={index} className="relative group">
-                      <img
-                        src={preview}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-32 sm:h-40 object-cover rounded-lg border"
-                      />
+                      <div className="relative w-full h-32 sm:h-40 rounded-lg border overflow-hidden">
+                        <Image
+                          src={preview}
+                          alt={`Preview ${index + 1}`}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
                       <button
                         type="button"
                         onClick={() => removeImage(index)}
@@ -604,10 +1021,10 @@ export function CreateOffreForm({ offreId, onSuccess, onCancel }: CreateOffreFor
       </Card>
 
       {/* Option Boost */}
-      <Card className="border-orange-200 bg-orange-50/50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5 text-orange-600" />
+      <Card className="border-2 border-orange-300 bg-gradient-to-r from-orange-50 to-yellow-50">
+        <CardHeader className="border-b border-orange-200">
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <Zap className="h-6 w-6 text-orange-600" />
             Booster cette offre
           </CardTitle>
           <CardDescription>
@@ -674,22 +1091,44 @@ export function CreateOffreForm({ offreId, onSuccess, onCancel }: CreateOffreFor
       </Card>
 
       {/* Actions */}
-      <div className="flex justify-end gap-4">
-        {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Annuler
-          </Button>
-        )}
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              {offreId ? 'Modification...' : 'Création...'}
-            </>
-          ) : (
-            offreId ? 'Modifier l\'offre' : 'Créer l\'offre'
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 p-6 bg-gradient-to-r from-gray-50 to-slate-50 rounded-lg border-2">
+        <div className="text-sm text-muted-foreground">
+          <p className="font-medium text-foreground mb-1">Rappel</p>
+          <p>Vérifiez toutes les informations avant de soumettre votre offre</p>
+        </div>
+        <div className="flex gap-3">
+          {onCancel && (
+            <Button type="button" variant="outline" onClick={onCancel} className="min-w-[120px]">
+              Annuler
+            </Button>
           )}
-        </Button>
+          <Button 
+            type="submit" 
+            disabled={isLoading}
+            className="min-w-[160px] bg-gradient-to-r from-orange-600 to-yellow-600 hover:from-orange-700 hover:to-yellow-700 text-white font-semibold shadow-lg"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {offreId ? 'Modification...' : 'Création...'}
+              </>
+            ) : (
+              <>
+                    {offreId ? (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Modifier l&apos;offre
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Créer l&apos;offre
+                      </>
+                    )}
+              </>
+            )}
+          </Button>
+        </div>
       </div>
     </form>
   )
