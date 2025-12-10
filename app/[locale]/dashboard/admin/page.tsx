@@ -189,6 +189,12 @@ export default function AdminDashboardPage() {
     'stripe-link': true,
   })
   const [savingSettings, setSavingSettings] = useState(false)
+  
+  // États pour les statistiques de visiteurs
+  const [visiteursParMois, setVisiteursParMois] = useState<Array<{ mois: string; moisKey: string; nombre: number; pourcentage: number }>>([])
+  const [visiteursParAnnee, setVisiteursParAnnee] = useState<Array<{ annee: string; nombre: number; pourcentage: number }>>([])
+  const [loadingVisiteurs, setLoadingVisiteurs] = useState(false)
+  const [totalVisiteurs, setTotalVisiteurs] = useState(0)
 
   const pages = [
     { id: 'cgu', name: 'Conditions Générales (CGU)' },
@@ -253,6 +259,41 @@ export default function AdminDashboardPage() {
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSection, filtreRole, filtreStatut, searchUtilisateur])
+
+  // Charger les statistiques de visiteurs depuis l'API
+  useEffect(() => {
+    if (activeSection === 'analytics') {
+      loadVisiteursStats()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSection])
+
+  const loadVisiteursStats = async () => {
+    setLoadingVisiteurs(true)
+    try {
+      const response = await fetch('/api/admin/visiteurs')
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      
+      if (data.success && data.data) {
+        setVisiteursParMois(data.data.visiteursParMois || [])
+        setVisiteursParAnnee(data.data.visiteursParAnnee || [])
+        setTotalVisiteurs(data.data.totalVisiteurs || 0)
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des statistiques de visiteurs:', error)
+      // En cas d'erreur, on garde les tableaux vides
+      setVisiteursParMois([])
+      setVisiteursParAnnee([])
+      setTotalVisiteurs(0)
+    } finally {
+      setLoadingVisiteurs(false)
+    }
+  }
 
   const loadUtilisateurs = async () => {
     setLoadingUtilisateurs(true)
@@ -2739,7 +2780,7 @@ export default function AdminDashboardPage() {
                     </Button>
                   </div>
 
-                  <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
                     <Card>
                       <CardHeader>
                         <CardTitle>Prestataires actifs</CardTitle>
@@ -2778,6 +2819,117 @@ export default function AdminDashboardPage() {
                           <TrendingUp className="h-4 w-4 inline mr-1 text-green-500" />
                           +15% ce mois
                         </p>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Total visiteurs</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-3xl font-bold">
+                          {loadingVisiteurs ? '...' : totalVisiteurs.toLocaleString()}
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-2">
+                          <Eye className="h-4 w-4 inline mr-1 text-blue-500" />
+                          Tous les temps
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Visiteurs par mois</CardTitle>
+                        <CardDescription>Répartition des visiteurs par mois (nombre et pourcentage)</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {loadingVisiteurs ? (
+                          <div className="flex items-center justify-center h-[300px]">
+                            <div className="text-muted-foreground">Chargement...</div>
+                          </div>
+                        ) : visiteursParMois.length > 0 ? (
+                          <div className="space-y-4">
+                            <BarChart
+                              data={{
+                                labels: visiteursParMois.map(v => v.mois),
+                                datasets: [
+                                  {
+                                    label: 'Nombre de visiteurs',
+                                    data: visiteursParMois.map(v => v.nombre),
+                                    backgroundColor: 'rgba(249, 115, 22, 0.8)',
+                                    borderColor: 'rgba(249, 115, 22, 1)',
+                                  },
+                                ],
+                              }}
+                              height={200}
+                            />
+                            <div className="mt-4 space-y-2 max-h-[200px] overflow-y-auto">
+                              <div className="text-sm font-semibold mb-2">Détails par mois :</div>
+                              {visiteursParMois.map((visiteur, index) => (
+                                <div key={index} className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                                  <span className="text-sm font-medium">{visiteur.mois}</span>
+                                  <div className="flex items-center gap-4">
+                                    <span className="text-sm font-bold">{visiteur.nombre}</span>
+                                    <span className="text-xs text-muted-foreground">{visiteur.pourcentage}%</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center h-[300px]">
+                            <div className="text-muted-foreground">Aucune donnée disponible</div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Visiteurs par année</CardTitle>
+                        <CardDescription>Répartition des visiteurs par année (nombre et pourcentage)</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {loadingVisiteurs ? (
+                          <div className="flex items-center justify-center h-[300px]">
+                            <div className="text-muted-foreground">Chargement...</div>
+                          </div>
+                        ) : visiteursParAnnee.length > 0 ? (
+                          <div className="space-y-4">
+                            <BarChart
+                              data={{
+                                labels: visiteursParAnnee.map(v => v.annee),
+                                datasets: [
+                                  {
+                                    label: 'Nombre de visiteurs',
+                                    data: visiteursParAnnee.map(v => v.nombre),
+                                    backgroundColor: 'rgba(234, 179, 8, 0.8)',
+                                    borderColor: 'rgba(234, 179, 8, 1)',
+                                  },
+                                ],
+                              }}
+                              height={200}
+                            />
+                            <div className="mt-4 space-y-2 max-h-[200px] overflow-y-auto">
+                              <div className="text-sm font-semibold mb-2">Détails par année :</div>
+                              {visiteursParAnnee.map((visiteur, index) => (
+                                <div key={index} className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                                  <span className="text-sm font-medium">{visiteur.annee}</span>
+                                  <div className="flex items-center gap-4">
+                                    <span className="text-sm font-bold">{visiteur.nombre}</span>
+                                    <span className="text-xs text-muted-foreground">{visiteur.pourcentage}%</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center h-[300px]">
+                            <div className="text-muted-foreground">Aucune donnée disponible</div>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   </div>
