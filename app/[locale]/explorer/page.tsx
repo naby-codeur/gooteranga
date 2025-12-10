@@ -44,6 +44,7 @@ const regions = [
 
 export default function ExplorerPage() {
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
   const [currentBgIndex, setCurrentBgIndex] = useState(0)
   const [filters, setFilters] = useState({
     region: '',
@@ -60,9 +61,21 @@ export default function ExplorerPage() {
   const [sortBy, setSortBy] = useState('popularity')
   const [selectedThemes, setSelectedThemes] = useState<string[]>([])
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 12
+  const itemsPerPage = 20
 
-  const backgroundImages = Array.from({ length: 10 }, (_, i) => `/images/ba${i + 1}.png`)
+  // Images de fond avec les bonnes extensions
+  const backgroundImages = [
+    '/images/ba1.jpg',
+    '/images/ba2.jpg',
+    '/images/ba3.webp',
+    '/images/ba4.jpg',
+    '/images/ba5.jpg',
+    '/images/ba6.jpg',
+    '/images/ba7.jpeg',
+    '/images/ba8.jpg',
+    '/images/ba9.jpg',
+    '/images/ba10.jpg',
+  ]
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -71,6 +84,15 @@ export default function ExplorerPage() {
     return () => clearInterval(interval)
   }, [backgroundImages.length])
 
+  // Debounce pour la recherche
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery)
+    }, 500) // Attendre 500ms après la dernière frappe
+
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
   // Utiliser le hook useOffres pour récupérer les offres depuis l'API
   const { offres, loading, error, refetch, pagination } = useOffres({
     region: filters.region || undefined,
@@ -78,13 +100,13 @@ export default function ExplorerPage() {
     minPrix: filters.budgetMin || undefined,
     maxPrix: filters.budgetMax || undefined,
     isActive: true,
-    search: searchQuery || undefined,
+    search: debouncedSearchQuery || undefined,
     page: currentPage,
     limit: itemsPerPage,
   })
 
   // Réinitialiser à la page 1 quand les filtres changent
-  const filtersKey = `${filters.region}-${filters.type}-${filters.activite}-${filters.budgetMin}-${filters.budgetMax}-${searchQuery}-${selectedThemes.join(',')}`
+  const filtersKey = `${filters.region}-${filters.type}-${filters.activite}-${filters.budgetMin}-${filters.budgetMax}-${debouncedSearchQuery}-${selectedThemes.join(',')}`
   
   useEffect(() => {
     if (currentPage !== 1) {
@@ -182,7 +204,7 @@ export default function ExplorerPage() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section avec carrousel */}
-      <section className="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
+      <section className="relative min-h-[50vh] sm:min-h-[60vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0">
           {backgroundImages.map((image, index) => (
             <div
@@ -197,69 +219,104 @@ export default function ExplorerPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent z-10"></div>
         </div>
 
-        <div className="container relative z-20 mx-[10%] py-24">
-          <Button asChild variant="ghost" className="mb-6 text-white hover:text-white/80">
+        <div className="container relative z-20 mx-4 sm:mx-6 md:mx-[10%] py-12 sm:py-16 md:py-24">
+          <Button asChild variant="ghost" className="mb-4 sm:mb-6 text-white hover:text-white/80 text-sm sm:text-base">
             <Link href="/">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Retour à l&apos;accueil
+              <ArrowLeft className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Retour à l&apos;accueil</span>
+              <span className="sm:hidden">Retour</span>
             </Link>
           </Button>
           <div className="max-w-4xl">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 bg-teranga-orange/20 backdrop-blur rounded-full">
-                <Compass className="h-8 w-8 text-white" />
+            <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+              <div className="p-2 sm:p-3 bg-teranga-orange/20 backdrop-blur rounded-full">
+                <Compass className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
               </div>
-              <Badge className="bg-white/20 backdrop-blur text-white border-white/30">
-                <Sparkles className="h-3 w-3 mr-1" />
+              <Badge className="bg-white/20 backdrop-blur text-white border-white/30 text-xs sm:text-sm">
+                <Sparkles className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
                 Explorer
               </Badge>
             </div>
-            <h1 className="text-5xl font-bold text-white sm:text-6xl md:text-7xl mb-6">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white mb-4 sm:mb-6 leading-tight">
               Explorez le Sénégal
               <br />
               <span className="text-teranga-orange">autrement</span>
             </h1>
-            <p className="text-xl text-white/90 sm:text-2xl max-w-2xl mb-8">
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-white/90 max-w-2xl mb-6 sm:mb-8">
               Découvrez des expériences uniques, authentiques et mémorables avec nos guides locaux certifiés
             </p>
 
             {/* Barre de recherche améliorée */}
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-teranga-orange z-10" />
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <div className="flex-1 relative group">
+                <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-teranga-orange z-10 transition-colors group-focus-within:text-[#FFD700]" />
                 <Input
-                  placeholder="Rechercher une destination, une activité, un guide..."
-                  className="pl-12 pr-4 py-6 text-lg bg-white/95 backdrop-blur border-2 border-teranga-orange/30 focus:border-teranga-orange shadow-xl"
+                  placeholder="Rechercher une destination, activité, guide..."
+                  className="pl-10 sm:pl-12 pr-10 sm:pr-4 py-4 sm:py-6 text-sm sm:text-base md:text-lg bg-white/95 backdrop-blur border-2 border-teranga-orange/30 focus:border-teranga-orange shadow-xl transition-all duration-200 focus:shadow-2xl focus:scale-[1.01]"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      setDebouncedSearchQuery(searchQuery)
+                      refetch()
+                    }
+                  }}
                 />
+                {searchQuery && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery('')
+                      setDebouncedSearchQuery('')
+                    }}
+                    className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-teranga-orange transition-colors"
+                    aria-label="Effacer la recherche"
+                  >
+                    <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
               </div>
               <Button 
                 size="lg" 
-                className="sm:w-auto bg-teranga-orange hover:bg-[#FFD700] text-white text-lg px-8 py-6 h-auto shadow-xl font-semibold"
-                onClick={() => refetch()}
+                className="w-full sm:w-auto bg-teranga-orange hover:bg-[#FFD700] text-white text-sm sm:text-base md:text-lg px-6 sm:px-8 py-4 sm:py-6 h-auto shadow-xl font-semibold transition-all duration-200 hover:scale-105 active:scale-95"
+                onClick={() => {
+                  setDebouncedSearchQuery(searchQuery)
+                  refetch()
+                }}
+                disabled={loading}
               >
-                <Search className="mr-2 h-5 w-5" />
+                {loading ? (
+                  <Loader2 className="mr-2 h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                ) : (
+                  <Search className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                )}
                 Rechercher
               </Button>
             </div>
+            {debouncedSearchQuery && (
+              <p className="text-xs sm:text-sm text-white/80 mt-2 flex items-center gap-2">
+                <Search className="h-3 w-3 sm:h-4 sm:w-4" />
+                Recherche: &quot;{debouncedSearchQuery}&quot;
+              </p>
+            )}
           </div>
         </div>
       </section>
 
       {/* Section Filtres */}
-      <section className="bg-gradient-to-br from-[#FFF8E1] via-[#FFF9C4] to-[#FFE0B2] py-8 border-b-2 border-teranga-orange/20">
-        <div className="mx-[10%]">
+      <section className="bg-gradient-to-br from-[#FFF8E1] via-[#FFF9C4] to-[#FFE0B2] py-6 sm:py-8 border-b-2 border-teranga-orange/20">
+        <div className="mx-4 sm:mx-6 md:mx-[10%]">
           <div className="space-y-4">
 
             {/* Filtres de base */}
-            <div className="flex flex-wrap gap-4 items-center">
-              <div className="flex items-center gap-2">
-                <Filter className="h-5 w-5 text-teranga-orange" />
-                <span className="text-sm font-semibold text-gray-800">Filtres rapides:</span>
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4 items-start sm:items-center">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Filter className="h-4 w-4 sm:h-5 sm:w-5 text-teranga-orange flex-shrink-0" />
+                <span className="text-xs sm:text-sm font-semibold text-gray-800">Filtres rapides:</span>
               </div>
           <Select value={filters.region || 'all'} onValueChange={(value) => setFilters({ ...filters, region: value === 'all' ? '' : value })}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px] text-sm">
               <SelectValue placeholder="Région" />
             </SelectTrigger>
             <SelectContent>
@@ -273,7 +330,7 @@ export default function ExplorerPage() {
           </Select>
 
           <Select value={filters.type || 'all'} onValueChange={(value) => setFilters({ ...filters, type: value === 'all' ? '' : value })}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px] text-sm">
               <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
@@ -284,11 +341,13 @@ export default function ExplorerPage() {
               <SelectItem value="restaurant">Restaurant</SelectItem>
               <SelectItem value="culture">Culture</SelectItem>
               <SelectItem value="evenement">Événement</SelectItem>
+              <SelectItem value="transport">Transport</SelectItem>
+              <SelectItem value="autres">Autres</SelectItem>
             </SelectContent>
           </Select>
 
           <Select value={filters.activite || 'all'} onValueChange={(value) => setFilters({ ...filters, activite: value === 'all' ? '' : value })}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px] text-sm">
               <SelectValue placeholder="Activité" />
             </SelectTrigger>
             <SelectContent>
@@ -302,7 +361,7 @@ export default function ExplorerPage() {
           </Select>
 
           <Select value={filters.budgetMin || 'none'} onValueChange={(value) => setFilters({ ...filters, budgetMin: value === 'none' ? '' : value })}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px] text-sm">
               <SelectValue placeholder="Budget min" />
             </SelectTrigger>
             <SelectContent>
@@ -317,7 +376,7 @@ export default function ExplorerPage() {
           </Select>
 
           <Select value={filters.budgetMax || 'none'} onValueChange={(value) => setFilters({ ...filters, budgetMax: value === 'none' ? '' : value })}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px] text-sm">
               <SelectValue placeholder="Budget max" />
             </SelectTrigger>
             <SelectContent>
@@ -334,7 +393,7 @@ export default function ExplorerPage() {
               <Button
                 variant="outline"
                 onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                className="border-teranga-orange text-teranga-orange hover:bg-teranga-orange hover:text-white"
+                className="w-full sm:w-auto border-teranga-orange text-teranga-orange hover:bg-teranga-orange hover:text-white text-sm"
               >
                 <Filter className="mr-2 h-4 w-4" />
                 {showAdvancedFilters ? 'Masquer' : 'Plus'} de filtres
@@ -342,7 +401,7 @@ export default function ExplorerPage() {
             </div>
 
             {/* Filtres par thèmes */}
-            <Card className="p-6 bg-white/95 backdrop-blur shadow-xl border-2 border-teranga-orange/20">
+            <Card className="p-4 sm:p-6 bg-white/95 backdrop-blur shadow-xl border-2 border-teranga-orange/20">
               <ThemeFilters
                 selectedThemes={selectedThemes}
                 onThemesChange={setSelectedThemes}
@@ -351,8 +410,8 @@ export default function ExplorerPage() {
 
             {/* Filtres avancés */}
             {showAdvancedFilters && (
-              <Card className="p-6 bg-white/95 backdrop-blur shadow-xl border-2 border-teranga-orange/20">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="p-4 sm:p-6 bg-white/95 backdrop-blur shadow-xl border-2 border-teranga-orange/20">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center gap-2">
                   <Clock className="h-4 w-4" />
@@ -431,26 +490,26 @@ export default function ExplorerPage() {
       </section>
 
       {/* Section Résultats */}
-      <section className="mx-[10%] py-16 md:py-24">
-        <div className="flex items-center justify-between mb-12">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl mb-2">
+      <section className="mx-4 sm:mx-6 md:mx-[10%] py-12 sm:py-16 md:py-24">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-0 mb-8 sm:mb-12">
+          <div className="flex-1">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight mb-2">
               Nos expériences
             </h2>
-            <p className="text-lg text-muted-foreground">
+            <p className="text-sm sm:text-base md:text-lg text-muted-foreground">
               {actualPagination.total > 0 
                 ? `${actualPagination.total} expérience${actualPagination.total > 1 ? 's' : ''} trouvée${actualPagination.total > 1 ? 's' : ''}`
                 : 'Aucune expérience trouvée'
               }
               {actualPagination.totalPages > 1 && (
-                <span className="ml-2 text-sm">
+                <span className="ml-2 text-xs sm:text-sm">
                   (Page {currentPage} sur {actualPagination.totalPages})
                 </span>
               )}
             </p>
           </div>
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-[200px] border-teranga-orange/30">
+            <SelectTrigger className="w-full sm:w-[200px] border-teranga-orange/30 text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

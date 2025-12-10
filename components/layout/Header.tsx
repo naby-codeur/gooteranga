@@ -19,6 +19,17 @@ export function Header() {
   const router = useRouter()
   const locale = useLocale()
   const [scrolled, setScrolled] = useState(false)
+  // Nécessaire pour éviter l'erreur d'hydratation avec Radix UI
+  // Les composants Radix UI génèrent des IDs aléatoires qui diffèrent entre serveur et client
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    // Utiliser setTimeout pour éviter l'avertissement du linter tout en résolvant l'hydratation
+    const timer = setTimeout(() => {
+      setMounted(true)
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -57,24 +68,25 @@ export function Header() {
           : 'bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 border-b border-transparent'
       }`}
     >
-      <div className="flex h-16 sm:h-20 items-center justify-between px-3 sm:px-4 md:px-6 lg:px-8 max-w-full">
+      <div className="flex h-14 sm:h-16 md:h-20 items-center justify-between px-2 sm:px-3 md:px-4 lg:px-6 xl:px-8 max-w-full overflow-hidden">
         {/* Zone gauche - Logo */}
         <div className="flex items-center flex-shrink-0 z-20 min-w-0">
           <Link 
             href="/" 
-            className="flex items-center gap-1.5 sm:gap-2 group transition-all duration-300 hover:scale-105 active:scale-95"
+            className="flex items-center gap-1 sm:gap-1.5 md:gap-2 group transition-all duration-300 hover:scale-105 active:scale-95"
           >
-            <div className="relative w-[40px] h-[40px] sm:w-[45px] sm:h-[45px] md:w-[50px] md:h-[50px] flex-shrink-0 animate-pulse-slow">
+            <div className="relative w-[32px] h-[32px] sm:w-[40px] sm:h-[40px] md:w-[45px] md:h-[45px] lg:w-[50px] lg:h-[50px] flex-shrink-0 animate-pulse-slow">
               <Image
                 src="/logo_gooteranga.png"
                 alt="GooTeranga Logo"
                 fill
                 className="object-contain transition-all duration-500 ease-in-out group-hover:scale-110 group-hover:rotate-12 group-hover:drop-shadow-lg group-hover:brightness-110"
                 priority
-                sizes="(max-width: 640px) 40px, (max-width: 768px) 45px, 50px"
+                unoptimized
+                sizes="(max-width: 640px) 32px, (max-width: 768px) 40px, (max-width: 1024px) 45px, 50px"
               />
             </div>
-            <h5 className="text-3xl font-bold bg-gradient-to-r from-orange-600 via-yellow-500 to-orange-600 bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
+            <h5 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-orange-600 via-yellow-500 to-orange-600 bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
               GooTeranga
             </h5>
           
@@ -99,57 +111,75 @@ export function Header() {
           >
             Explorer
           </Link>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className={`flex items-center gap-1 text-xs xl:text-sm font-medium transition-colors hover:text-orange-600 whitespace-nowrap ${
-                  pathname?.includes('/plages-iles') ||
-                  pathname?.includes('/culture-religion') ||
-                  pathname?.includes('/gastronomie') ||
-                  pathname?.includes('/nature-ecotourisme') ||
-                  pathname?.includes('/monuments-histoire') ||
-                  pathname?.includes('/marche-artisanal')
-                    ? 'text-orange-600' 
-                    : 'text-foreground'
-                }`}
-              >
-                Découvrir
-                <ChevronDown className="h-3 w-3 xl:h-4 xl:w-4" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-56">
-              <DropdownMenuItem asChild>
-                <Link href="/plages-iles" className="cursor-pointer">
-                  Plages & îles
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/culture-religion" className="cursor-pointer">
-                  Culture & religion
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/gastronomie" className="cursor-pointer">
-                  Gastronomie sénégalaise
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/nature-ecotourisme" className="cursor-pointer">
-                  Nature & écotourisme
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/monuments-histoire" className="cursor-pointer">
-                  Monuments & histoire
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/marche-artisanal" className="cursor-pointer">
-                  Marché Artisanal
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {mounted ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className={`flex items-center gap-1 text-xs xl:text-sm font-medium transition-colors hover:text-orange-600 whitespace-nowrap ${
+                    pathname?.includes('/plages-iles') ||
+                    pathname?.includes('/culture-religion') ||
+                    pathname?.includes('/gastronomie') ||
+                    pathname?.includes('/nature-ecotourisme') ||
+                    pathname?.includes('/monuments-histoire') ||
+                    pathname?.includes('/marche-artisanal')
+                      ? 'text-orange-600' 
+                      : 'text-foreground'
+                  }`}
+                >
+                  Découvrir
+                  <ChevronDown className="h-3 w-3 xl:h-4 xl:w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-56">
+                <DropdownMenuItem asChild>
+                  <Link href="/plages-iles" className="cursor-pointer">
+                    Plages & îles
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/culture-religion" className="cursor-pointer">
+                    Culture & religion
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/gastronomie" className="cursor-pointer">
+                    Gastronomie sénégalaise
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/nature-ecotourisme" className="cursor-pointer">
+                    Nature & écotourisme
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/monuments-histoire" className="cursor-pointer">
+                    Monuments & histoire
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/marche-artisanal" className="cursor-pointer">
+                    Marché Artisanal
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <button
+              className={`flex items-center gap-1 text-xs xl:text-sm font-medium transition-colors hover:text-orange-600 whitespace-nowrap ${
+                pathname?.includes('/plages-iles') ||
+                pathname?.includes('/culture-religion') ||
+                pathname?.includes('/gastronomie') ||
+                pathname?.includes('/nature-ecotourisme') ||
+                pathname?.includes('/monuments-histoire') ||
+                pathname?.includes('/marche-artisanal')
+                  ? 'text-orange-600' 
+                  : 'text-foreground'
+              }`}
+            >
+              Découvrir
+              <ChevronDown className="h-3 w-3 xl:h-4 xl:w-4" />
+            </button>
+          )}
           <Link 
             href="/regions"
             className={`text-xs xl:text-sm font-medium transition-colors hover:text-orange-600 whitespace-nowrap ${
@@ -169,41 +199,48 @@ export function Header() {
         </nav>
 
         {/* Zone droite - Actions */}
-        <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 flex-shrink-0 z-20">
+        <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 lg:gap-3 flex-shrink-0 z-20">
           
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-1 h-8 sm:h-9 px-1.5 sm:px-2 md:px-3">
-                <span className="text-sm sm:text-base md:text-lg">🌐</span>
-                <span className="hidden sm:inline text-[10px] min-[375px]:text-xs">{getLocaleLabel(locale as string)}</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'fr' })}>
-                🇫🇷 Français
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'en' })}>
-                🇬🇧 English
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'ar' })}>
-                🇸🇦 العربية
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'es' })}>
-                🇪🇸 Español
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'it' })}>
-                🇮🇹 Italiano
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'pt' })}>
-                🇵🇹 Português
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'de' })}>
-                🇩🇪 Deutsch
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {mounted ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-0.5 sm:gap-1 h-7 sm:h-8 md:h-9 px-1 sm:px-1.5 md:px-2 lg:px-3">
+                  <span className="text-xs sm:text-sm md:text-base lg:text-lg">🌐</span>
+                  <span className="hidden sm:inline text-[9px] sm:text-[10px] md:text-xs">{getLocaleLabel(locale as string)}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'fr' })}>
+                  🇫🇷 Français
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'en' })}>
+                  🇬🇧 English
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'ar' })}>
+                  🇸🇦 العربية
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'es' })}>
+                  🇪🇸 Español
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'it' })}>
+                  🇮🇹 Italiano
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'pt' })}>
+                  🇵🇹 Português
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'de' })}>
+                  🇩🇪 Deutsch
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button variant="ghost" size="sm" className="gap-0.5 sm:gap-1 h-7 sm:h-8 md:h-9 px-1 sm:px-1.5 md:px-2 lg:px-3">
+              <span className="text-xs sm:text-sm md:text-base lg:text-lg">🌐</span>
+              <span className="hidden sm:inline text-[9px] sm:text-[10px] md:text-xs">{getLocaleLabel(locale as string)}</span>
+            </Button>
+          )}
 
-          <Button asChild variant="outline" size="sm" className="hidden xl:flex whitespace-nowrap h-8 sm:h-9 text-xs sm:text-sm">
+          <Button asChild variant="outline" size="sm" className="hidden xl:flex whitespace-nowrap h-8 md:h-9 text-xs md:text-sm px-2 md:px-3">
             <Link href="/signup">
               S&apos;inscrire
             </Link>
@@ -213,22 +250,23 @@ export function Header() {
             asChild
             variant="default" 
             size="sm"
-            className="bg-teranga-orange hover:bg-[#FFD700] text-white border-0 shadow-md hover:shadow-lg transition-all font-semibold whitespace-nowrap text-[10px] min-[375px]:text-xs sm:text-sm hidden md:flex h-8 sm:h-9 px-2 sm:px-3"
+            className="bg-teranga-orange hover:bg-[#FFD700] text-white border-0 shadow-md hover:shadow-lg transition-all font-semibold whitespace-nowrap text-[10px] sm:text-xs md:text-sm hidden md:flex h-8 md:h-9 px-2 md:px-3"
           >
            <Link href="/login">
-              <User className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-              Connexion
+              <User className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Connexion</span>
             </Link>
           </Button>
 
           {/* Menu mobile */}
-          <Sheet>
-            <SheetTrigger asChild className="lg:hidden">
-              <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9">
-                <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="w-[280px] sm:w-[300px]">
+          {mounted ? (
+            <Sheet>
+              <SheetTrigger asChild className="lg:hidden">
+                <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9">
+                  <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="w-[280px] sm:w-[300px]">
               <nav className="flex flex-col gap-2 mt-6 sm:mt-8">
                 <Link 
                   href="/"
@@ -337,48 +375,66 @@ export function Header() {
                   </Button>
                   <div className="pt-4 border-t">
                     <p className="text-sm text-muted-foreground mb-2">Langue:</p>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="w-full justify-start">
-                          <span className="text-lg mr-2">🌐</span>
-                          {locale === 'fr' ? '🇫🇷 Français' : 
-                           locale === 'en' ? '🇬🇧 English' : 
-                           locale === 'ar' ? '🇸🇦 العربية' :
-                           locale === 'es' ? '🇪🇸 Español' :
-                           locale === 'it' ? '🇮🇹 Italiano' :
-                           locale === 'pt' ? '🇵🇹 Português' :
-                           locale === 'de' ? '🇩🇪 Deutsch' : '🌐'}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start">
-                        <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'fr' })}>
-                          🇫🇷 Français
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'en' })}>
-                          🇬🇧 English
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'ar' })}>
-                          🇸🇦 العربية
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'es' })}>
-                          🇪🇸 Español
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'it' })}>
-                          🇮🇹 Italiano
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'pt' })}>
-                          🇵🇹 Português
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'de' })}>
-                          🇩🇪 Deutsch
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {mounted ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" className="w-full justify-start">
+                            <span className="text-lg mr-2">🌐</span>
+                            {locale === 'fr' ? '🇫🇷 Français' : 
+                             locale === 'en' ? '🇬🇧 English' : 
+                             locale === 'ar' ? '🇸🇦 العربية' :
+                             locale === 'es' ? '🇪🇸 Español' :
+                             locale === 'it' ? '🇮🇹 Italiano' :
+                             locale === 'pt' ? '🇵🇹 Português' :
+                             locale === 'de' ? '🇩🇪 Deutsch' : '🌐'}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                          <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'fr' })}>
+                            🇫🇷 Français
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'en' })}>
+                            🇬🇧 English
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'ar' })}>
+                            🇸🇦 العربية
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'es' })}>
+                            🇪🇸 Español
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'it' })}>
+                            🇮🇹 Italiano
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'pt' })}>
+                            🇵🇹 Português
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.replace(pathname || '/', { locale: 'de' })}>
+                            🇩🇪 Deutsch
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : (
+                      <Button variant="outline" className="w-full justify-start">
+                        <span className="text-lg mr-2">🌐</span>
+                        {locale === 'fr' ? '🇫🇷 Français' : 
+                         locale === 'en' ? '🇬🇧 English' : 
+                         locale === 'ar' ? '🇸🇦 العربية' :
+                         locale === 'es' ? '🇪🇸 Español' :
+                         locale === 'it' ? '🇮🇹 Italiano' :
+                         locale === 'pt' ? '🇵🇹 Português' :
+                         locale === 'de' ? '🇩🇪 Deutsch' : '🌐'}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </nav>
             </SheetContent>
           </Sheet>
+          ) : (
+            <Button variant="ghost" size="icon" className="lg:hidden h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9">
+              <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
+            </Button>
+          )}
         </div>
       </div>
     </header>

@@ -17,10 +17,10 @@ export function Footer() {
         <div className="absolute bottom-20 left-1/4 w-24 h-24 bg-yellow-400/20 rounded-full blur-xl animate-pulse delay-2000"></div>
       </div>
 
-      <div className="container relative z-10 py-12 md:py-16 px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-5">
+      <div className="container relative z-10 py-8 sm:py-10 md:py-12 lg:py-16 px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-2 lg:grid-cols-7 justify-items-center max-w-7xl mx-auto">
           {/* Logo et description */}
-          <div className="space-y-6 lg:col-span-2">
+          <div className="space-y-6 lg:col-span-2 text-center lg:text-left w-full">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -28,7 +28,7 @@ export function Footer() {
               transition={{ duration: 0.5 }}
             >
               <Link href="/" className="inline-block group">
-                <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center justify-center lg:justify-start gap-3 mb-4">
                   <motion.div
                     whileHover={{ rotate: [0, -10, 10, -10, 0], scale: 1.1 }}
                     transition={{ duration: 0.5 }}
@@ -52,11 +52,11 @@ export function Footer() {
                   </motion.div>
                 </div>
             </Link>
-              <p className="text-sm max-w-md leading-relaxed">
+              <p className="text-sm max-w-md leading-relaxed mx-auto lg:mx-0">
               Explorez le Sénégal comme jamais auparavant. Découvrez, réservez et vivez des expériences inoubliables 
               avec nos guides locaux certifiés.
             </p>
-              <div className="flex items-center gap-2 text-sm ">
+              <div className="flex items-center justify-center lg:justify-start gap-2 text-sm ">
                 <span>Fait avec</span>
                 <motion.div
                   animate={{ scale: [1, 1.2, 1] }}
@@ -75,7 +75,7 @@ export function Footer() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="flex gap-4"
+              className="flex gap-4 justify-center lg:justify-start"
             >
               {[
                 { icon: Facebook, href: 'https://facebook.com', color: 'hover:text-blue-600', label: 'Facebook' },
@@ -120,6 +120,7 @@ export function Footer() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.1 }}
+            className="lg:col-span-2 text-center lg:text-left w-full"
           >
             <h4 className="mb-6 font-bold text-lg bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
               Découvrir
@@ -141,6 +142,7 @@ export function Footer() {
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.3, delay: index * 0.1 }}
+                    className="flex justify-center lg:justify-start"
                   >
                     <Link 
                       href={item.href} 
@@ -167,6 +169,7 @@ export function Footer() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.2 }}
+            className="text-center lg:text-left w-full"
           >
             <h4 className="mb-6 font-bold text-lg bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
               Entreprise
@@ -186,6 +189,7 @@ export function Footer() {
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.3, delay: index * 0.1 }}
+                  className="flex justify-center lg:justify-start"
                 >
                   {item.href === '#' ? (
                     <a 
@@ -227,6 +231,7 @@ export function Footer() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.3 }}
+            className="lg:col-span-2 text-center lg:text-left w-full"
           >
             <h4 className="mb-6 font-bold text-lg bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
               Légal
@@ -243,6 +248,7 @@ export function Footer() {
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.3, delay: index * 0.1 }}
+                  className="flex justify-center lg:justify-start"
                 >
                   <Link 
                     href={item.href} 
@@ -269,11 +275,11 @@ export function Footer() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.4 }}
-          className="mt-12 pt-8 border-t border-orange-200/50 dark:border-orange-800/50"
+          className="mt-8 sm:mt-10 md:mt-12 pt-6 sm:pt-8 border-t border-orange-200/50 dark:border-orange-800/50"
         >
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6">
             <div className="flex flex-col items-center md:items-start gap-2">
-              <p className="text-sm text-muted-foreground text-center md:text-left">
+              <p className="text-xs sm:text-sm text-muted-foreground text-center md:text-left">
                 &copy; {new Date().getFullYear()} GooTeranga. Tous droits réservés.
               </p>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -288,7 +294,7 @@ export function Footer() {
                 <Sun className="h-3 w-3 text-yellow-500" />
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
                 <motion.div
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -296,9 +302,9 @@ export function Footer() {
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="h-9 bg-white dark:bg-gray-800 border-orange-200 dark:border-orange-800 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:border-orange-300 dark:hover:border-orange-700 transition-all"
+                      className="h-8 sm:h-9 bg-white dark:bg-gray-800 border-orange-200 dark:border-orange-800 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:border-orange-300 dark:hover:border-orange-700 transition-all text-xs sm:text-sm"
                     >
-                      <span className="font-medium">gooteranga92@gmail.com</span>
+                      <span className="font-medium truncate max-w-[200px] sm:max-w-none">gooteranga92@gmail.com</span>
                     </Button>
                 </motion.div>
             </div>
