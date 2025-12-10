@@ -1,21 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from '@/i18n/routing'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { 
   MapPin, 
   Star, 
   Waves,
-  Building2,
   UtensilsCrossed,
-  Trees,
-  Landmark,
-  ShoppingBag,
   Mountain,
-  Sun,
   Compass,
   Heart,
   Sparkles,
@@ -26,7 +21,6 @@ import {
   Palette
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import Image from 'next/image'
 
 interface Region {
   id: number
@@ -324,13 +318,57 @@ const regions: Region[] = [
 
 export default function RegionsPage() {
   const [selectedRegion, setSelectedRegion] = useState<Region | null>(null)
-  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [currentBgIndex, setCurrentBgIndex] = useState(0)
+
+  const backgroundImages = [
+    '/images/ba1.jpg',
+    '/images/ba2.jpg',
+    '/images/ba3.webp',
+    '/images/ba4.jpg',
+    '/images/ba5.jpg',
+    '/images/ba6.jpg',
+    '/images/ba7.jpeg',
+    '/images/ba8.jpg',
+    '/images/ba9.jpg',
+    '/images/ba10.jpg',
+  ]
+
+  // Carrousel automatique des images de fond
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentBgIndex((prev) => (prev + 1) % backgroundImages.length)
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [backgroundImages.length])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-orange-50">
       {/* Hero Section */}
-      <section className="relative py-20 md:py-32 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-orange-500 via-yellow-500 to-red-500 opacity-10"></div>
+      <section className="relative py-12 sm:py-16 md:py-20 lg:py-32 overflow-hidden min-h-[50vh] sm:min-h-[60vh] md:min-h-[70vh] flex items-center">
+        {/* Carrousel d'images de fond */}
+        <div className="absolute inset-0 w-full h-full">
+          {backgroundImages.map((image, index) => (
+            <div
+              key={index}
+              className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ease-in-out ${
+                index === currentBgIndex ? 'opacity-100 z-0' : 'opacity-0 z-0'
+              }`}
+              style={{
+                backgroundImage: `url(${image})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center center',
+                backgroundRepeat: 'no-repeat',
+              }}
+            />
+          ))}
+          {/* Overlay sombre pour améliorer la lisibilité */}
+          <div className="absolute inset-0 bg-black/50 z-10"></div>
+          {/* Overlay gradient */}
+          <div className="absolute inset-0 bg-gradient-to-br from-green-500/30 via-yellow-500/30 to-red-500/30 z-10"></div>
+          {/* Overlay gradient du bas vers le haut pour le texte */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-black/20 z-10"></div>
+        </div>
         <div className="container mx-auto relative z-10 px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -341,41 +379,41 @@ export default function RegionsPage() {
             <motion.div
               animate={{ rotate: [0, 10, -10, 0] }}
               transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-              className="inline-block mb-6"
+              className="inline-block mb-4 sm:mb-6"
             >
-              <Sparkles className="h-16 w-16 text-yellow-500" />
+              <Sparkles className="h-10 w-10 sm:h-12 sm:w-12 md:h-16 md:w-16 text-yellow-500" />
             </motion.div>
-            <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-orange-600 via-yellow-600 to-orange-600 bg-clip-text text-transparent">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-orange-600 via-yellow-600 to-orange-600 bg-clip-text text-transparent px-2">
               Les 14 Régions du Sénégal
             </h1>
-            <p className="text-xl sm:text-2xl text-muted-foreground mb-4 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-white/95 mb-4 sm:mb-6 max-w-3xl mx-auto leading-relaxed px-2 drop-shadow-md">
               Le Sénégal est un pays où chaque région raconte une histoire différente
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-lg text-muted-foreground mb-8">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 text-sm sm:text-base md:text-lg text-white/90 mb-6 sm:mb-8 px-2">
               <div className="flex items-center gap-2">
-                <Waves className="h-5 w-5 text-blue-500" />
-                <span>Des plages qui rivalisent avec celles des Caraïbes</span>
+                <Waves className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300 flex-shrink-0" />
+                <span className="text-center sm:text-left">Des plages qui rivalisent avec celles des Caraïbes</span>
               </div>
               <div className="flex items-center gap-2">
-                <Heart className="h-5 w-5 text-red-500" />
-                <span>Des traditions millénaires</span>
+                <Heart className="h-4 w-4 sm:h-5 sm:w-5 text-red-300 flex-shrink-0" />
+                <span className="text-center sm:text-left">Des traditions millénaires</span>
               </div>
               <div className="flex items-center gap-2">
-                <Mountain className="h-5 w-5 text-green-500" />
-                <span>Des paysages du désert aux montagnes</span>
+                <Mountain className="h-4 w-4 sm:h-5 sm:w-5 text-green-300 flex-shrink-0" />
+                <span className="text-center sm:text-left">Des paysages du désert aux montagnes</span>
               </div>
             </div>
-            <div className="flex flex-wrap justify-center gap-4">
-              <Badge className="px-4 py-2 text-base bg-orange-500 text-white">
-                <Compass className="h-4 w-4 mr-2" />
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-4 px-2">
+              <Badge className="px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm md:text-base bg-orange-500 text-white">
+                <Compass className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                 Tourisme
               </Badge>
-              <Badge className="px-4 py-2 text-base bg-yellow-500 text-white">
-                <Music className="h-4 w-4 mr-2" />
+              <Badge className="px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm md:text-base bg-yellow-500 text-white">
+                <Music className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                 Culture
               </Badge>
-              <Badge className="px-4 py-2 text-base bg-green-500 text-white">
-                <Palette className="h-4 w-4 mr-2" />
+              <Badge className="px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm md:text-base bg-green-500 text-white">
+                <Palette className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                 Artisanat
               </Badge>
             </div>
@@ -384,9 +422,9 @@ export default function RegionsPage() {
       </section>
 
       {/* Regions Grid */}
-      <section className="py-12 md:py-16">
+      <section className="py-8 sm:py-12 md:py-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
             {regions.map((region, index) => (
               <motion.div
                 key={region.id}
@@ -394,40 +432,56 @@ export default function RegionsPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: index * 0.1 }}
-                whileHover={{ scale: 1.05, y: -5 }}
+                whileHover={{ scale: 1.03, y: -3 }}
+                className="h-full"
               >
                 <Card 
                   className="overflow-hidden cursor-pointer h-full border-2 hover:border-orange-500 transition-all duration-300 group"
                   onClick={() => setSelectedRegion(region)}
                 >
-                  <div className={`relative h-48 bg-gradient-to-br ${region.color} overflow-hidden`}>
-                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors"></div>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-6xl">{region.emoji}</span>
+                  <div className={`relative h-40 sm:h-44 md:h-48 bg-gradient-to-br ${region.color} overflow-hidden`}>
+                    {/* Image de fond pour la région */}
+                    {region.images && region.images.length > 0 && (
+                      <div 
+                        className="absolute inset-0 w-full h-full"
+                        style={{
+                          backgroundImage: `url(${region.images[0]})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center center',
+                          backgroundRepeat: 'no-repeat',
+                        }}
+                      />
+                    )}
+                    {/* Overlay avec gradient */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-black/60 group-hover:from-black/50 group-hover:via-black/30 group-hover:to-black/50 transition-colors"></div>
+                    {/* Emoji par-dessus l'image */}
+                    <div className="absolute inset-0 flex items-center justify-center z-10">
+                      <span className="text-4xl sm:text-5xl md:text-6xl drop-shadow-lg">{region.emoji}</span>
                     </div>
-                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
-                      <h3 className="text-xl font-bold text-white">{region.name}</h3>
-                      <p className="text-sm text-white/90">{region.departments.length} départements</p>
+                    <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 bg-gradient-to-t from-black/90 via-black/70 to-transparent z-10">
+                      <h3 className="text-lg sm:text-xl font-bold text-white drop-shadow-lg">{region.name}</h3>
+                      <p className="text-xs sm:text-sm text-white/90 drop-shadow-md">{region.departments.length} départements</p>
                     </div>
                   </div>
-                  <CardContent className="p-4">
+                  <CardContent className="p-3 sm:p-4">
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <MapPin className="h-4 w-4" />
-                        <span>{region.departments.slice(0, 2).join(', ')}...</span>
+                      <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                        <MapPin className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                        <span className="truncate">{region.departments.slice(0, 2).join(', ')}...</span>
                       </div>
-                      <p className="text-sm line-clamp-2">{region.tourism}</p>
+                      <p className="text-xs sm:text-sm line-clamp-2 leading-relaxed">{region.tourism}</p>
                     </div>
                     <Button 
                       variant="outline" 
-                      className="w-full mt-4 group-hover:bg-orange-500 group-hover:text-white transition-colors"
+                      size="sm"
+                      className="w-full mt-3 sm:mt-4 text-xs sm:text-sm group-hover:bg-orange-500 group-hover:text-white transition-colors"
                       onClick={(e) => {
                         e.stopPropagation()
                         setSelectedRegion(region)
                       }}
                     >
                       Découvrir
-                      <ArrowRight className="h-4 w-4 ml-2" />
+                      <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 ml-2" />
                     </Button>
                   </CardContent>
                 </Card>
@@ -444,7 +498,7 @@ export default function RegionsPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/50 backdrop-blur-sm"
             onClick={() => setSelectedRegion(null)}
           >
             <motion.div
@@ -452,46 +506,46 @@ export default function RegionsPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto mx-auto"
+              className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-2xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto mx-auto"
             >
               {/* Header avec image */}
-              <div className={`relative h-64 bg-gradient-to-br ${selectedRegion.color} overflow-hidden`}>
+              <div className={`relative h-40 sm:h-48 md:h-56 lg:h-64 bg-gradient-to-br ${selectedRegion.color} overflow-hidden`}>
                 <div className="absolute inset-0 bg-black/30"></div>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-8xl">{selectedRegion.emoji}</span>
+                  <span className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl">{selectedRegion.emoji}</span>
                 </div>
-                <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-3xl font-bold text-white mb-1">{selectedRegion.name}</h2>
+                <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 md:p-6 bg-gradient-to-t from-black/80 to-transparent">
+                  <div className="flex items-start sm:items-center justify-between gap-2 sm:gap-4">
+                    <div className="flex-1 min-w-0">
+                      <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-1 break-words">{selectedRegion.name}</h2>
                       {selectedRegion.subtitle && (
-                        <p className="text-white/80 text-sm mb-2 italic">{selectedRegion.subtitle}</p>
+                        <p className="text-white/80 text-xs sm:text-sm mb-1 sm:mb-2 italic break-words">{selectedRegion.subtitle}</p>
                       )}
-                      <p className="text-white/90 text-sm">Départements : {selectedRegion.departments.join(', ')}</p>
+                      <p className="text-white/90 text-xs sm:text-sm break-words">Départements : {selectedRegion.departments.join(', ')}</p>
                     </div>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="text-white hover:bg-white/20"
+                      className="text-white hover:bg-white/20 flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10"
                       onClick={() => setSelectedRegion(null)}
                     >
-                      <X className="h-6 w-6" />
+                      <X className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
                     </Button>
                   </div>
                 </div>
               </div>
 
               {/* Contenu */}
-              <div className="p-6 space-y-6">
+              <div className="p-4 sm:p-5 md:p-6 space-y-4 sm:space-y-5 md:space-y-6">
                 {/* Highlights */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                    <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
+                  <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3 flex items-center gap-2">
+                    <Star className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500 fill-yellow-500 flex-shrink-0" />
                     Points d&apos;intérêt
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {selectedRegion.highlights.map((highlight, index) => (
-                      <Badge key={index} variant="outline" className="text-sm">
+                      <Badge key={index} variant="outline" className="text-xs sm:text-sm">
                         {highlight}
                       </Badge>
                     ))}
@@ -499,20 +553,20 @@ export default function RegionsPage() {
                 </div>
 
                 {/* Tourisme */}
-                <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2 text-blue-700">
-                    <Compass className="h-5 w-5" />
-                    🌍 Tourisme
+                <div className="p-3 sm:p-4 rounded-lg bg-blue-50 border border-blue-200">
+                  <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3 flex items-center gap-2 text-blue-700">
+                    <Compass className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                    <span>🌍 Tourisme</span>
                   </h3>
-                  <p className="text-muted-foreground mb-3 leading-relaxed">{selectedRegion.tourism}</p>
+                  <p className="text-sm sm:text-base text-muted-foreground mb-2 sm:mb-3 leading-relaxed">{selectedRegion.tourism}</p>
                   {selectedRegion.activites && selectedRegion.activites.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-blue-200">
-                      <p className="text-sm font-medium text-blue-700 mb-2">Activités recommandées :</p>
+                    <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-blue-200">
+                      <p className="text-xs sm:text-sm font-medium text-blue-700 mb-1 sm:mb-2">Activités recommandées :</p>
                       <ul className="space-y-1">
                         {selectedRegion.activites.map((activite, index) => (
-                          <li key={index} className="text-sm text-muted-foreground flex items-center gap-2">
-                            <span className="text-blue-500">•</span>
-                            {activite}
+                          <li key={index} className="text-xs sm:text-sm text-muted-foreground flex items-start gap-2">
+                            <span className="text-blue-500 mt-1 flex-shrink-0">•</span>
+                            <span>{activite}</span>
                           </li>
                         ))}
                       </ul>
@@ -521,33 +575,33 @@ export default function RegionsPage() {
                 </div>
 
                 {/* Culture */}
-                <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200">
-                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2 text-yellow-700">
-                    <Music className="h-5 w-5" />
-                    🎭 Culture
+                <div className="p-3 sm:p-4 rounded-lg bg-yellow-50 border border-yellow-200">
+                  <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3 flex items-center gap-2 text-yellow-700">
+                    <Music className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                    <span>🎭 Culture</span>
                   </h3>
-                  <p className="text-muted-foreground leading-relaxed">{selectedRegion.culture}</p>
+                  <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">{selectedRegion.culture}</p>
                 </div>
 
                 {/* Artisanat */}
-                <div className="p-4 rounded-lg bg-green-50 border border-green-200">
-                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2 text-green-700">
-                    <Palette className="h-5 w-5" />
-                    🧵 Artisanat
+                <div className="p-3 sm:p-4 rounded-lg bg-green-50 border border-green-200">
+                  <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3 flex items-center gap-2 text-green-700">
+                    <Palette className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                    <span>🧵 Artisanat</span>
                   </h3>
-                  <p className="text-muted-foreground leading-relaxed">{selectedRegion.artisanat}</p>
+                  <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">{selectedRegion.artisanat}</p>
                 </div>
 
                 {/* Spécialités culinaires */}
                 {selectedRegion.specialites && selectedRegion.specialites.length > 0 && (
-                  <div className="p-4 rounded-lg bg-orange-50 border border-orange-200">
-                    <h3 className="text-lg font-semibold mb-3 flex items-center gap-2 text-orange-700">
-                      <UtensilsCrossed className="h-5 w-5" />
-                      🍽️ Spécialités Culinaires
+                  <div className="p-3 sm:p-4 rounded-lg bg-orange-50 border border-orange-200">
+                    <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3 flex items-center gap-2 text-orange-700">
+                      <UtensilsCrossed className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                      <span>🍽️ Spécialités Culinaires</span>
                     </h3>
                     <div className="flex flex-wrap gap-2">
                       {selectedRegion.specialites.map((specialite, index) => (
-                        <Badge key={index} variant="outline" className="text-sm bg-white">
+                        <Badge key={index} variant="outline" className="text-xs sm:text-sm bg-white">
                           {specialite}
                         </Badge>
                       ))}
@@ -558,13 +612,14 @@ export default function RegionsPage() {
                 {/* Images */}
                 {selectedRegion.images.length > 0 && (
                   <div>
-                    <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                      <Camera className="h-5 w-5" />
+                    <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3 flex items-center gap-2">
+                      <Camera className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
                       Galerie
                     </h3>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4">
                       {selectedRegion.images.slice(0, 4).map((image, index) => (
-                        <div key={index} className="relative h-32 rounded-lg overflow-hidden">
+                        <div key={index} className="relative h-24 sm:h-28 md:h-32 rounded-lg overflow-hidden">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={image}
                             alt={`${selectedRegion.name} ${index + 1}`}
@@ -580,15 +635,17 @@ export default function RegionsPage() {
                 )}
 
                 {/* CTA */}
-                <div className="flex gap-4 pt-4">
-                  <Button asChild className="flex-1 bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 md:gap-4 pt-3 sm:pt-4">
+                  <Button asChild size="sm" className="flex-1 text-xs sm:text-sm bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600">
                     <Link href={`/explorer?region=${selectedRegion.name.toLowerCase()}`}>
                       Explorer les offres
-                      <ArrowRight className="h-4 w-4 ml-2" />
+                      <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 ml-2" />
                     </Link>
                   </Button>
                   <Button 
                     variant="outline" 
+                    size="sm"
+                    className="text-xs sm:text-sm"
                     onClick={() => setSelectedRegion(null)}
                   >
                     Fermer

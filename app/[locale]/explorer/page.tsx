@@ -247,59 +247,65 @@ export default function ExplorerPage() {
             </p>
 
             {/* Barre de recherche améliorée */}
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-              <div className="flex-1 relative group">
-                <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-teranga-orange z-10 transition-colors group-focus-within:text-[#FFD700]" />
-                <Input
-                  placeholder="Rechercher une destination, activité, guide..."
-                  className="pl-10 sm:pl-12 pr-10 sm:pr-4 py-4 sm:py-6 text-sm sm:text-base md:text-lg bg-white/95 backdrop-blur border-2 border-teranga-orange/30 focus:border-teranga-orange shadow-xl transition-all duration-200 focus:shadow-2xl focus:scale-[1.01]"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+            <div className="w-full max-w-2xl mx-auto">
+              <div className="relative group">
+                <div className="flex items-center gap-2 bg-white/95 backdrop-blur-md rounded-full border-2 border-teranga-orange/40 focus-within:border-teranga-orange shadow-2xl transition-all duration-300 focus-within:shadow-orange-500/20 focus-within:ring-4 focus-within:ring-teranga-orange/20 overflow-hidden">
+                  <div className="flex-1 flex items-center">
+                    <Search className="ml-4 sm:ml-5 h-5 w-5 sm:h-6 sm:w-6 text-teranga-orange flex-shrink-0 transition-colors group-focus-within:text-[#FFD700]" />
+                    <Input
+                      placeholder="Rechercher une destination, activité, guide..."
+                      className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 pl-3 sm:pl-4 pr-2 py-4 sm:py-5 text-sm sm:text-base placeholder:text-gray-500"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          setDebouncedSearchQuery(searchQuery)
+                          refetch()
+                        }
+                      }}
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => {
+                          setSearchQuery('')
+                          setDebouncedSearchQuery('')
+                        }}
+                        className="mr-2 sm:mr-3 p-1.5 rounded-full text-gray-400 hover:text-teranga-orange hover:bg-orange-50 transition-all duration-200"
+                        aria-label="Effacer la recherche"
+                      >
+                        <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                  <Button 
+                    size="lg" 
+                    className="rounded-full bg-teranga-orange hover:bg-[#FFD700] text-white text-sm sm:text-base px-6 sm:px-8 py-4 sm:py-5 h-auto shadow-lg font-semibold transition-all duration-200 hover:scale-105 active:scale-95 m-1 sm:m-1.5"
+                    onClick={() => {
                       setDebouncedSearchQuery(searchQuery)
                       refetch()
-                    }
-                  }}
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => {
-                      setSearchQuery('')
-                      setDebouncedSearchQuery('')
                     }}
-                    className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-teranga-orange transition-colors"
-                    aria-label="Effacer la recherche"
+                    disabled={loading}
                   >
-                    <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                )}
+                    {loading ? (
+                      <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                    ) : (
+                      <>
+                        <Search className="h-4 w-4 sm:h-5 sm:w-5 sm:mr-2" />
+                        <span className="hidden sm:inline">Rechercher</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
-              <Button 
-                size="lg" 
-                className="w-full sm:w-auto bg-teranga-orange hover:bg-[#FFD700] text-white text-sm sm:text-base md:text-lg px-6 sm:px-8 py-4 sm:py-6 h-auto shadow-xl font-semibold transition-all duration-200 hover:scale-105 active:scale-95"
-                onClick={() => {
-                  setDebouncedSearchQuery(searchQuery)
-                  refetch()
-                }}
-                disabled={loading}
-              >
-                {loading ? (
-                  <Loader2 className="mr-2 h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
-                ) : (
-                  <Search className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
-                )}
-                Rechercher
-              </Button>
+              {debouncedSearchQuery && (
+                <p className="text-xs sm:text-sm text-white/90 mt-3 flex items-center justify-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 w-fit mx-auto">
+                  <Search className="h-3 w-3 sm:h-4 sm:w-4" />
+                  Recherche: &quot;{debouncedSearchQuery}&quot;
+                </p>
+              )}
             </div>
-            {debouncedSearchQuery && (
-              <p className="text-xs sm:text-sm text-white/80 mt-2 flex items-center gap-2">
-                <Search className="h-3 w-3 sm:h-4 sm:w-4" />
-                Recherche: &quot;{debouncedSearchQuery}&quot;
-              </p>
-            )}
           </div>
         </div>
       </section>

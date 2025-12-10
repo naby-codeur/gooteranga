@@ -61,12 +61,14 @@ export default function CGUPage() {
       icon: CheckCircle,
       content: [
         'Les réservations sont effectuées directement entre le Touriste et le Prestataire via la plateforme.',
-        'Paiement en ligne : Les Voyageurs paient directement les Prestataires via Stripe Connect. Les fonds ne transitent jamais sur un compte GooTeranga.',
-        'Paiement hors ligne : Les Voyageurs peuvent payer en espèces ou via Mobile Money directement au Prestataire, hors plateforme.',
+        'Paiement en ligne : Les Voyageurs paient directement les Prestataires via Stripe Connect (Visa, Mastercard, AMEX, Apple Pay, Google Pay). Les fonds ne transitent jamais sur un compte GooTeranga.',
+        'Paiement hors ligne : Les Voyageurs peuvent payer en espèces ou via Mobile Money (Wave, Orange Money, Free Money, MTN) directement au Prestataire, hors plateforme.',
+        'GooTeranga ne suit pas, ne vérifie pas et ne contrôle pas les paiements hors ligne. Ces transactions ne relèvent d\'aucune obligation de GooTeranga.',
         'GooTeranga n\'intervient pas dans l\'encaissement, la détention, la sécurisation bancaire des fonds, les remboursements ou la gestion des litiges financiers.',
         'Toute demande relative à un paiement doit être résolue directement entre le Voyageur et le Prestataire.',
-        'GooTeranga ne peut être tenue responsable des défauts de paiement, fraudes, non-remboursements ou litiges commerciaux.',
-        'Les Prestataires paient leurs abonnements et boosts à GooTeranga via Stripe Billing (Visa, Mastercard, AMEX, Apple Pay, Google Pay) ou en espèces.'
+        'GooTeranga ne peut être tenue responsable des défauts de paiement, fraudes, non-remboursements, litiges commerciaux, annulations imprévues ou pertes financières.',
+        'Les Prestataires paient leurs abonnements et boosts à GooTeranga via Stripe Billing (Visa, Mastercard, AMEX, Apple Pay, Google Pay) ou en espèces.',
+        'GooTeranga ne stocke aucune donnée bancaire. Le traitement des paiements est intégralement assuré par Stripe, prestataire externe certifié PCI-DSS.'
       ]
     },
     {
@@ -205,18 +207,18 @@ export default function CGUPage() {
             <motion.div
               animate={{ rotate: [0, 10, -10, 0] }}
               transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-              className="inline-block mb-6"
+              className="inline-block mb-4 sm:mb-6"
             >
-              <FileText className="h-16 w-16 text-orange-500 mx-auto" />
+              <FileText className="h-12 w-12 sm:h-16 sm:w-16 text-orange-500 mx-auto" />
             </motion.div>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-orange-600 via-yellow-600 to-orange-600 bg-clip-text text-transparent">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-orange-600 via-yellow-600 to-orange-600 bg-clip-text text-transparent px-2">
               Conditions Générales d&apos;Utilisation
             </h1>
-            <p className="text-xl sm:text-2xl text-muted-foreground mb-4">
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground mb-4 px-2">
               Dernière mise à jour : {new Date().toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
-            <Badge className="px-4 py-2 text-base bg-orange-500 text-white">
-              <Heart className="h-4 w-4 mr-2" />
+            <Badge className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base bg-orange-500 text-white">
+              <Heart className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
               En vigueur
             </Badge>
           </motion.div>
@@ -226,8 +228,8 @@ export default function CGUPage() {
       {/* Content */}
       <section className="py-12 md:py-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
-          <div className="mb-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800">
+          <div className="mb-6 sm:mb-8 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-xs sm:text-sm text-blue-800 leading-relaxed">
               <strong>Important :</strong> En utilisant GooTeranga, vous reconnaissez avoir lu, compris et accepté les présentes Conditions Générales d&apos;Utilisation. 
               Nous vous invitons à les consulter régulièrement.
             </p>
@@ -245,20 +247,20 @@ export default function CGUPage() {
                   transition={{ duration: 0.4, delay: index * 0.1 }}
                 >
                   <Card className="hover:shadow-lg transition-shadow duration-300 border-2">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-3 text-xl">
-                        <div className="p-2 rounded-lg bg-gradient-to-br from-orange-500 to-yellow-500">
-                          <Icon className="h-5 w-5 text-white" />
+                    <CardHeader className="p-4 sm:p-6">
+                      <CardTitle className="flex items-start sm:items-center gap-2 sm:gap-3 text-base sm:text-lg md:text-xl flex-wrap">
+                        <div className="p-1.5 sm:p-2 rounded-lg bg-gradient-to-br from-orange-500 to-yellow-500 flex-shrink-0">
+                          <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                         </div>
-                        {section.title}
+                        <span className="flex-1 min-w-0 break-words">{section.title}</span>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <ul className="space-y-3">
+                    <CardContent className="p-4 sm:p-6 pt-0">
+                      <ul className="space-y-2 sm:space-y-3">
                         {section.content.map((item, itemIndex) => (
-                          <li key={itemIndex} className="flex items-start gap-3 text-muted-foreground">
-                            <span className="text-orange-500 mt-1">•</span>
-                            <span className="flex-1 leading-relaxed">{item}</span>
+                          <li key={itemIndex} className="flex items-start gap-2 sm:gap-3 text-muted-foreground">
+                            <span className="text-orange-500 mt-1 flex-shrink-0">•</span>
+                            <span className="flex-1 leading-relaxed text-sm sm:text-base break-words">{item}</span>
                           </li>
                         ))}
                       </ul>
@@ -275,12 +277,12 @@ export default function CGUPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4 }}
-            className="mt-12 p-6 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-lg text-white text-center"
+            className="mt-8 sm:mt-12 p-4 sm:p-6 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-lg text-white text-center"
           >
-            <h3 className="text-2xl font-bold mb-4">Des questions sur nos CGU ?</h3>
-            <p className="mb-4">Notre équipe est là pour vous aider</p>
+            <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">Des questions sur nos CGU ?</h3>
+            <p className="mb-3 sm:mb-4 text-sm sm:text-base">Notre équipe est là pour vous aider</p>
             <Link href="/dashboard/admin?section=support">
-              <Badge className="px-6 py-2 text-base bg-white text-orange-600 hover:bg-orange-50 cursor-pointer">
+              <Badge className="px-4 py-1.5 sm:px-6 sm:py-2 text-sm sm:text-base bg-white text-orange-600 hover:bg-orange-50 cursor-pointer inline-flex items-center">
                 Nous contacter
               </Badge>
             </Link>

@@ -1,6 +1,5 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { Link } from '@/i18n/routing'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -9,15 +8,6 @@ import { Star, MapPin, UtensilsCrossed, ChefHat, Store, BookOpen, ArrowLeft, Arr
 import Image from 'next/image'
 
 export default function GastronomiePage() {
-  const [currentBgIndex, setCurrentBgIndex] = useState(0)
-  const backgroundImages = Array.from({ length: 10 }, (_, i) => `/images/ba${i + 1}.png`)
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentBgIndex((prev) => (prev + 1) % backgroundImages.length)
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [backgroundImages.length])
 
   // Plats principaux
   const platsPrincipaux = [
@@ -160,43 +150,38 @@ export default function GastronomiePage() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <section className="relative min-h-[70vh] flex items-center justify-center overflow-hidden">
+      <section className="relative min-h-[60vh] sm:min-h-[70vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0">
-          {backgroundImages.map((image, index) => (
-            <div
-              key={index}
-              className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out ${
-                index === currentBgIndex ? 'opacity-100 z-0' : 'opacity-0 z-0'
-              }`}
-              style={{ backgroundImage: `url(${image})` }}
-            />
-          ))}
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url('/images/ba2.jpg')` }}
+          />
           <div className="absolute inset-0 bg-gradient-to-br from-teranga-orange/40 via-[#FFD700]/20 to-teranga-orange/40 z-10"></div>
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent z-10"></div>
         </div>
 
-        <div className="container relative z-20 mx-[10%] py-24">
-          <Button asChild variant="ghost" className="mb-6 text-white hover:text-white/80">
+        <div className="container relative z-20 mx-4 sm:mx-[5%] md:mx-[10%] py-12 sm:py-16 md:py-20 lg:py-24">
+          <Button asChild variant="ghost" className="mb-4 sm:mb-6 text-white hover:text-white/80 text-sm sm:text-base">
             <Link href="/">
-              <ArrowLeft className="mr-2 h-4 w-4" />
+              <ArrowLeft className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               Retour à l&apos;accueil
             </Link>
           </Button>
           <div className="max-w-4xl">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 bg-teranga-orange/20 backdrop-blur rounded-full">
-                <UtensilsCrossed className="h-8 w-8 text-white" />
+            <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+              <div className="p-2 sm:p-3 bg-teranga-orange/20 backdrop-blur rounded-full">
+                <UtensilsCrossed className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
               </div>
-              <Badge className="bg-white/20 backdrop-blur text-white border-white/30">
+              <Badge className="bg-white/20 backdrop-blur text-white border-white/30 text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-1.5">
                 Gastronomie Sénégalaise
               </Badge>
             </div>
-            <h1 className="text-5xl font-bold text-white sm:text-6xl md:text-7xl mb-6">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white mb-4 sm:mb-6 leading-tight">
               Gastronomie
               <br />
               <span className="text-[#FFD700]">Sénégalaise</span>
             </h1>
-            <p className="text-xl text-white/90 sm:text-2xl max-w-2xl">
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-white/90 max-w-2xl leading-relaxed">
               Savourez les délices de la cuisine sénégalaise. Du Thiéboudiène au Yassa, 
               découvrez les saveurs authentiques qui font la réputation de la Teranga.
             </p>
@@ -205,12 +190,12 @@ export default function GastronomiePage() {
       </section>
 
       {/* Section Plats Principaux */}
-      <section className="mx-[10%] py-16 md:py-24">
-        <div className="mb-12">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl mb-4">
+      <section className="mx-4 sm:mx-[5%] md:mx-[10%] py-8 sm:py-12 md:py-16 lg:py-24">
+        <div className="mb-8 sm:mb-12">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight mb-3 sm:mb-4">
             Plats Principaux
           </h2>
-          <p className="text-lg text-muted-foreground">
+          <p className="text-base sm:text-lg text-muted-foreground">
             Les plats emblématiques de la cuisine sénégalaise
           </p>
         </div>

@@ -27,10 +27,12 @@ export default function CGVPage() {
         'Les prix sont indiqués en FCFA (Franc CFA) et sont TTC (Toutes Taxes Comprises) sauf mention contraire.',
         'Les prix peuvent varier selon la saison, la disponibilité et les options choisies.',
         'Paiement en ligne : Les Voyageurs paient directement les Prestataires via Stripe Connect (Visa, Mastercard, AMEX, Apple Pay, Google Pay). Les fonds ne transitent jamais sur un compte GooTeranga.',
-        'Paiement hors ligne : Les Voyageurs peuvent payer en espèces ou via Mobile Money (Wave, Orange Money, Free Money) directement au Prestataire, hors plateforme.',
+        'Paiement hors ligne : Les Voyageurs peuvent payer en espèces ou via Mobile Money (Wave, Orange Money, Free Money, MTN) directement au Prestataire, hors plateforme.',
+        'GooTeranga ne suit pas, ne vérifie pas et ne contrôle pas les paiements hors ligne. Ces transactions ne relèvent d\'aucune obligation de GooTeranga.',
         'GooTeranga n\'intervient pas dans l\'encaissement, la détention, la sécurisation bancaire des fonds, les remboursements ou la gestion des litiges financiers.',
         'Toute demande relative à un paiement doit être résolue directement entre le Voyageur et le Prestataire.',
-        'GooTeranga ne peut être tenue responsable des défauts de paiement, fraudes, non-remboursements ou litiges commerciaux.'
+        'GooTeranga ne peut être tenue responsable des défauts de paiement, fraudes, non-remboursements, litiges commerciaux, annulations imprévues, inexécution ou mauvaise exécution d\'une prestation, ou pertes financières.',
+        'Le rôle de GooTeranga se limite strictement à fournir la technologie permettant la mise en relation et la facilitation des transactions.'
       ]
     },
     {
@@ -54,12 +56,14 @@ export default function CGVPage() {
         'Les conditions d\'annulation varient selon le Prestataire et le type de service.',
         'Les conditions spécifiques sont clairement indiquées avant la réservation.',
         'En général :',
-        '  • Annulation plus de 7 jours avant : remboursement intégral (hors frais de service)',
-        '  • Annulation entre 3 et 7 jours : remboursement de 50%',
-        '  • Annulation moins de 3 jours : pas de remboursement sauf cas de force majeure',
-        'Les demandes d\'annulation doivent être effectuées via la plateforme ou par email.',
-        'Le remboursement est effectué sous 5 à 10 jours ouvrés sur le moyen de paiement utilisé.',
-        'En cas d\'annulation par le Prestataire, le remboursement est intégral.'
+        '  • Annulation plus de 7 jours avant : remboursement intégral (hors frais de service éventuels)',
+        '  • Annulation entre 3 et 7 jours : remboursement de 50% selon les conditions du Prestataire',
+        '  • Annulation moins de 3 jours : pas de remboursement sauf cas de force majeure ou conditions particulières du Prestataire',
+        'Les demandes d\'annulation doivent être effectuées via la plateforme ou par email directement au Prestataire.',
+        'Le remboursement est effectué directement par le Prestataire sous 5 à 10 jours ouvrés sur le moyen de paiement utilisé.',
+        'En cas d\'annulation par le Prestataire, le remboursement est intégral.',
+        'GooTeranga n\'intervient pas dans les remboursements. Toute demande de remboursement doit être adressée directement au Prestataire.',
+        'En cas de litige concernant un remboursement, le Voyageur et le Prestataire doivent résoudre la situation directement entre eux.'
       ]
     },
     {
@@ -93,13 +97,15 @@ export default function CGVPage() {
       title: '7. Assurance et responsabilité',
       icon: Shield,
       content: [
-        'Les Prestataires doivent posséder une assurance responsabilité civile professionnelle.',
-        'GooTeranga recommande aux Touristes de souscrire une assurance voyage.',
+        'Les Prestataires doivent posséder une assurance responsabilité civile professionnelle et toutes les autorisations nécessaires à l\'exercice de leur activité.',
+        'GooTeranga recommande fortement aux Touristes de souscrire une assurance voyage couvrant les annulations, les retards et les incidents éventuels.',
         'GooTeranga est une plateforme technologique et n\'est ni vendeur, ni prestataire de services, ni agent commercial, ni garant financier.',
         'La responsabilité de GooTeranga est strictement limitée au fonctionnement technique de la plateforme.',
-        'GooTeranga ne peut être tenue responsable de la qualité des prestations, des retards, absences, annulations, litiges, erreurs ou pertes financières.',
+        'GooTeranga ne peut être tenue responsable de la qualité des prestations, des retards, absences, annulations, litiges, erreurs, omissions dans les contenus publiés, pertes financières, dommages directs ou indirects.',
+        'GooTeranga fournit la plateforme « en l\'état » et sans garantie quant à la disponibilité continue des services.',
         'Tout litige financier ou contractuel entre Voyageur et Prestataire doit être réglé sans intervention de GooTeranga.',
-        'GooTeranga peut éventuellement proposer une médiation non contraignante, sans obligation d\'issue favorable.'
+        'GooTeranga peut éventuellement proposer une médiation non contraignante, sans obligation d\'issue favorable.',
+        'Les Prestataires sont seuls responsables de la qualité, de la sécurité et de la conformité des services fournis.'
       ]
     },
     {
@@ -181,18 +187,18 @@ export default function CGVPage() {
             <motion.div
               animate={{ rotate: [0, 10, -10, 0] }}
               transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-              className="inline-block mb-6"
+              className="inline-block mb-4 sm:mb-6"
             >
-              <ShoppingCart className="h-16 w-16 text-orange-500 mx-auto" />
+              <ShoppingCart className="h-12 w-12 sm:h-16 sm:w-16 text-orange-500 mx-auto" />
             </motion.div>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-orange-600 via-yellow-600 to-orange-600 bg-clip-text text-transparent">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-orange-600 via-yellow-600 to-orange-600 bg-clip-text text-transparent px-2">
               Conditions Générales de Vente
             </h1>
-            <p className="text-xl sm:text-2xl text-muted-foreground mb-4">
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground mb-4 px-2">
               Dernière mise à jour : {new Date().toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
-            <Badge className="px-4 py-2 text-base bg-orange-500 text-white">
-              <Heart className="h-4 w-4 mr-2" />
+            <Badge className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base bg-orange-500 text-white">
+              <Heart className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
               En vigueur
             </Badge>
           </motion.div>
@@ -202,8 +208,8 @@ export default function CGVPage() {
       {/* Content */}
       <section className="py-12 md:py-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
-          <div className="mb-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800">
+          <div className="mb-6 sm:mb-8 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-xs sm:text-sm text-blue-800 leading-relaxed">
               <strong>Important :</strong> Les présentes Conditions Générales de Vente régissent toutes les transactions effectuées sur GooTeranga. 
               En effectuant une réservation, vous acceptez ces conditions.
             </p>
@@ -221,20 +227,20 @@ export default function CGVPage() {
                   transition={{ duration: 0.4, delay: index * 0.1 }}
                 >
                   <Card className="hover:shadow-lg transition-shadow duration-300 border-2">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-3 text-xl">
-                        <div className="p-2 rounded-lg bg-gradient-to-br from-orange-500 to-yellow-500">
-                          <Icon className="h-5 w-5 text-white" />
+                    <CardHeader className="p-4 sm:p-6">
+                      <CardTitle className="flex items-start sm:items-center gap-2 sm:gap-3 text-base sm:text-lg md:text-xl flex-wrap">
+                        <div className="p-1.5 sm:p-2 rounded-lg bg-gradient-to-br from-orange-500 to-yellow-500 flex-shrink-0">
+                          <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                         </div>
-                        {section.title}
+                        <span className="flex-1 min-w-0 break-words">{section.title}</span>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <ul className="space-y-3">
+                    <CardContent className="p-4 sm:p-6 pt-0">
+                      <ul className="space-y-2 sm:space-y-3">
                         {section.content.map((item, itemIndex) => (
-                          <li key={itemIndex} className="flex items-start gap-3 text-muted-foreground">
-                            <span className="text-orange-500 mt-1">•</span>
-                            <span className="flex-1 leading-relaxed">{item}</span>
+                          <li key={itemIndex} className="flex items-start gap-2 sm:gap-3 text-muted-foreground">
+                            <span className="text-orange-500 mt-1 flex-shrink-0">•</span>
+                            <span className="flex-1 leading-relaxed text-sm sm:text-base break-words">{item}</span>
                           </li>
                         ))}
                       </ul>
@@ -251,12 +257,12 @@ export default function CGVPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4 }}
-            className="mt-12 p-6 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-lg text-white text-center"
+            className="mt-8 sm:mt-12 p-4 sm:p-6 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-lg text-white text-center"
           >
-            <h3 className="text-2xl font-bold mb-4">Des questions sur nos CGV ?</h3>
-            <p className="mb-4">Notre équipe est là pour vous aider</p>
+            <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">Des questions sur nos CGV ?</h3>
+            <p className="mb-3 sm:mb-4 text-sm sm:text-base">Notre équipe est là pour vous aider</p>
             <Link href="/dashboard/admin?section=support">
-              <Badge className="px-6 py-2 text-base bg-white text-orange-600 hover:bg-orange-50 cursor-pointer">
+              <Badge className="px-4 py-1.5 sm:px-6 sm:py-2 text-sm sm:text-base bg-white text-orange-600 hover:bg-orange-50 cursor-pointer inline-flex items-center">
                 Nous contacter
               </Badge>
             </Link>
