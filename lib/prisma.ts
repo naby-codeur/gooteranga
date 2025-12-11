@@ -85,6 +85,10 @@ type MockPrismaClient = {
     update: (args: unknown) => Promise<unknown>
     delete: (args: unknown) => Promise<unknown>
   },
+  statistique: {
+    findMany: (args?: unknown) => Promise<unknown[]>
+    create: (args: unknown) => Promise<unknown>
+  },
   $disconnect: () => Promise<void>
 }
 
@@ -427,6 +431,10 @@ const mockPrismaClient: MockPrismaClient = {
       }
     },
     delete: async () => ({}),
+  },
+  statistique: {
+    findMany: async () => [],
+    create: async () => ({}),
   },
   $disconnect: async () => {},
 }

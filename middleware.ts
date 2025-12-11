@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 
 const intlMiddleware = createMiddleware(routing);
 
-// Fonction proxy exportée comme middleware pour Next.js 16
+// Fonction middleware exportée pour Next.js 16
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   try {
     // Ne pas appliquer le middleware i18n sur les routes API
@@ -17,14 +17,11 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     const response = await intlMiddleware(request);
     return response || NextResponse.next();
   } catch (error) {
-    console.error('Proxy error:', error);
+    console.error('Middleware error:', error);
     // En cas d'erreur, continuer sans middleware i18n
     return NextResponse.next();
   }
 }
-
-// Exporter aussi comme proxy pour compatibilité
-export const proxy = middleware;
 
 export const config = {
   // Correspondre à tous les chemins sauf
@@ -32,3 +29,5 @@ export const config = {
   // - … ceux contenant un point (ex: `favicon.ico`)
   matcher: ['/((?!api|_next|_vercel|.*\\..*).*)']
 };
+
+

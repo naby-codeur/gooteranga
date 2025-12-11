@@ -34,10 +34,11 @@ Créer une plateforme complète permettant :
 
 #### Backend
 - **Next.js API Routes** - Backend intégré (pas de serveur séparé)
-- **Prisma 7.0.1** - ORM pour PostgreSQL
-- **Supabase** - Base de données PostgreSQL + Authentification
-- **Stripe 20.0.0** - Paiements en ligne (cartes bancaires)
+- **Prisma 7.0.1** - ORM pour PostgreSQL (optionnel en mode dev)
+- **Stripe 20.0.0** - Paiements en ligne (cartes bancaires) - Structure prête
 - **CinetPay** (prévu) - Paiements locaux (Orange Money, Wave, Free Money)
+
+**Note** : Supabase a été retiré. Le projet fonctionne en mode développement avec des données fictives.
 
 #### Internationalisation
 - **next-intl 4.5.5** - Support multilingue
@@ -173,29 +174,50 @@ gooteranga/
 
 ## 🔐 Système d'Authentification
 
-### Architecture
-- **Supabase Auth** pour l'authentification (gestion des sessions, OAuth)
-- **Prisma** pour les données utilisateur et rôles
-- **Synchronisation** via webhook Supabase ↔ Prisma
+### ⚠️ Mode Développement Actuel
 
-### Fonctionnalités
-- ✅ Inscription/Connexion avec email/password
-- ✅ **Comptes multiples avec la même email** : Un utilisateur peut avoir un compte USER et un compte PRESTATAIRE avec la même adresse email (mots de passe différents)
-- ✅ Sélecteur de type de compte sur la page de connexion
-- ✅ OAuth (Google, Facebook)
-- ✅ Gestion des sessions avec cookies (Supabase SSR)
-- ✅ Protection des routes via middleware
-- ✅ Redirection automatique selon le rôle après connexion
-- ✅ Déconnexion redirige vers la page d'accueil
-- ✅ Accès aux pages login/signup même si connecté (permet de changer de compte)
+**IMPORTANT** : Le projet fonctionne actuellement en **mode développement** avec l'authentification désactivée et des données fictives.
 
-### Routes API Auth
-- `POST /api/auth/signup` - Inscription
-- `POST /api/auth/login` - Connexion
-- `POST /api/auth/logout` - Déconnexion
-- `GET /api/auth/session` - Récupération de la session
-- `GET /api/auth/callback` - Callback OAuth
-- `POST /api/auth/webhook` - Webhook Supabase
+### État Actuel
+
+- ✅ **Authentification désactivée** : Accès direct aux tableaux de bord sans connexion
+- ✅ **Données fictives** : Tous les hooks retournent des données fictives pour le développement
+- ✅ **Utilisateurs fictifs** : Le hook `useAuth` retourne automatiquement un utilisateur selon l'URL
+  - `/dashboard/admin` → Utilisateur ADMIN
+  - `/dashboard/prestataire` → Utilisateur PRESTATAIRE
+  - `/dashboard` → Utilisateur USER (client)
+
+### Accès aux Dashboards
+
+En mode développement, vous pouvez accéder directement à :
+- `/fr/dashboard` - Dashboard client (utilisateur fictif : client@example.com)
+- `/fr/dashboard/prestataire` - Dashboard prestataire (utilisateur fictif : prestataire@example.com)
+- `/fr/dashboard/admin` - Dashboard admin (utilisateur fictif : admin@gooteranga.com)
+
+### Routes API d'Authentification
+
+Toutes les routes `/api/auth/*` retournent des réponses de succès avec des données fictives :
+- `GET /api/auth/session` : Retourne un utilisateur fictif
+- `POST /api/auth/login` : Retourne une réponse de succès
+- `POST /api/auth/logout` : Retourne une réponse de succès
+- `POST /api/auth/signup` : Retourne une réponse de succès
+- `GET /api/auth/callback` : Redirige vers le dashboard
+- `POST /api/auth/webhook` : Retourne une réponse de succès
+
+### Migration vers la Production
+
+Pour activer l'authentification en production :
+
+1. Réintégrer un système d'authentification (Supabase, NextAuth, etc.)
+2. Mettre à jour `lib/hooks/useAuth.ts` pour utiliser l'API réelle
+3. Mettre à jour les routes `/api/auth/*` pour utiliser le système d'authentification
+4. Réactiver les vérifications d'authentification dans les layouts
+5. Remplacer les données fictives par des appels API réels
+
+### Packages Retirés
+
+- `@supabase/ssr`
+- `@supabase/supabase-js`
 
 ---
 
@@ -679,30 +701,40 @@ Le projet dispose d'une documentation complète dans le dossier `docs/` :
 - **Relations** - Relations complexes entre modèles
 - **Transactions** - Gestion des transactions
 
-### Authentification
-- **Supabase Auth** - Authentification complète
-- **OAuth** - Connexion sociale
-- **Sessions** - Gestion des sessions avec cookies
-- **Rôles** - Gestion des rôles utilisateurs
+### Authentification (Mode Développement)
+- **Mode développement** - Authentification désactivée, données fictives
+- **Hooks personnalisés** - `useAuth` retourne des utilisateurs fictifs selon l'URL
+- **Routes API** - Routes d'authentification retournent des réponses fictives
+- **Migration production** - À implémenter (Supabase, NextAuth, etc.)
 
 ---
 
 ## 🚦 État de Développement
 
-### ✅ Terminé (80%)
-- Architecture et structure de base
-- Authentification complète
-- Dashboards (utilisateur, prestataire, admin)
-- API Routes principales
-- Modèle de données complet
-- Interface utilisateur
-- Documentation
+### ⚠️ Mode Développement Actuel
 
-### ⏳ En Cours (15%)
+Le projet fonctionne en **mode développement** avec :
+- ✅ Authentification désactivée (accès direct aux dashboards)
+- ✅ Données fictives (pas de base de données requise)
+- ✅ Pas de dépendances externes nécessaires pour démarrer
+
+### ✅ Terminé (75%)
+- Architecture et structure de base
+- Dashboards (utilisateur, prestataire, admin) avec graphiques Chart.js
+- API Routes principales (structure complète)
+- Modèle de données complet (Prisma)
+- Interface utilisateur complète
+- Documentation
+- Système d'abonnements et boosts (structure)
+- Graphiques et analytics
+
+### ⏳ En Cours / À Finaliser (20%)
+- Authentification réelle (actuellement en mode dev)
 - Upload d'images/vidéos
-- Système de réservation
-- Intégration paiements
+- Système de réservation complet
+- Intégration paiements (Stripe/CinetPay)
 - Système d'emails
+- Connexion à une base de données réelle
 
 ### 📋 À Faire (5%)
 - Tests

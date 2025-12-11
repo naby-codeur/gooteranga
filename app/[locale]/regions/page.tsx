@@ -618,7 +618,7 @@ export default function RegionsPage() {
                     </h3>
                     <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4">
                       {selectedRegion.images.slice(0, 4).map((image, index) => (
-                        <div key={index} className="relative h-24 sm:h-28 md:h-32 rounded-lg overflow-hidden">
+                        <div key={index} className="relative h-24 sm:h-28 md:h-32 overflow-hidden">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={image}

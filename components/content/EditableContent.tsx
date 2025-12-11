@@ -27,23 +27,46 @@ export function EditableContent({ pageId, defaultContent }: EditableContentProps
   const loadContenu = async () => {
     try {
       const response = await fetch(`/api/admin/contenu?page=${pageId}`)
+      if (!response.ok) {
+        console.error('Failed to fetch contenu:', response.status, response.statusText)
+        setLoading(false)
+        return
+      }
+      
       const data = await response.json()
       
-      if (response.ok && data.success && data.data) {
+      if (data.success && data.data) {
         const contenuData = data.data
         let sections: ContenuSection[] = []
         
-        // Parser le contenu JSON
-        if (typeof contenuData.contenu === 'string') {
-          try {
-            const parsed = JSON.parse(contenuData.contenu)
-            sections = parsed.sections || []
-          } catch (parseError) {
-            console.error('Erreur lors du parsing du contenu JSON:', parseError)
-            sections = []
+        // Parser le contenu JSON avec gestion d'erreur robuste
+        try {
+          if (typeof contenuData.contenu === 'string') {
+            try {
+              const parsed = JSON.parse(contenuData.contenu)
+              sections = Array.isArray(parsed.sections) ? parsed.sections : []
+            } catch (parseError) {
+              console.error('Erreur lors du parsing du contenu JSON (string):', parseError)
+              sections = []
+            }
+          } else if (contenuData.contenu && typeof contenuData.contenu === 'object') {
+            // Si c'est déjà un objet, vérifier qu'il a la structure attendue
+            if (Array.isArray(contenuData.contenu.sections)) {
+              sections = contenuData.contenu.sections
+            } else {
+              // Essayer de sérialiser/désérialiser pour valider
+              try {
+                const validated = JSON.parse(JSON.stringify(contenuData.contenu))
+                sections = Array.isArray(validated.sections) ? validated.sections : []
+              } catch (validationError) {
+                console.error('Erreur lors de la validation du contenu JSON:', validationError)
+                sections = []
+              }
+            }
           }
-        } else if (contenuData.contenu?.sections) {
-          sections = contenuData.contenu.sections
+        } catch (error) {
+          console.error('Erreur générale lors du traitement du contenu:', error)
+          sections = []
         }
         
         if (sections.length > 0) {

@@ -16,23 +16,129 @@ export async function GET(request: NextRequest) {
 
     if (page) {
       // Récupérer le contenu d'une page spécifique
-      const contenu = await prisma.contenuEditable.findUnique({
-        where: { page },
-      })
+      let contenu
+      try {
+        contenu = await prisma.contenuEditable.findUnique({
+          where: { page },
+        })
+      } catch (dbError) {
+        console.error(`Error fetching contenu from database for page ${page}:`, dbError)
+        return errorResponse('Erreur lors de la récupération du contenu', 500)
+      }
 
       if (!contenu) {
         return successResponse(null, 'Contenu non trouvé', 200)
       }
 
-      return successResponse(contenu, 'Contenu récupéré avec succès', 200)
+      // Valider et nettoyer le contenu JSON
+      let contenuValide
+      try {
+        // Créer une copie de l'objet pour éviter de modifier l'original
+        contenuValide = {
+          ...contenu,
+          contenu: null as any
+        }
+
+        // Si contenu est déjà un objet, le valider en le sérialisant/désérialisant
+        if (typeof contenu.contenu === 'object' && contenu.contenu !== null) {
+          try {
+            // Essayer de sérialiser pour valider
+            const serialized = JSON.stringify(contenu.contenu)
+            // Puis désérialiser pour s'assurer que c'est valide
+            contenuValide.contenu = JSON.parse(serialized)
+          } catch (serializeError) {
+            console.error(`Invalid JSON object in contenu for page ${page}:`, serializeError)
+            contenuValide.contenu = { sections: [] }
+          }
+        } else if (typeof contenu.contenu === 'string') {
+          // Si c'est une string, essayer de la parser
+          try {
+            contenuValide.contenu = JSON.parse(contenu.contenu)
+            // Valider que le résultat est un objet avec sections
+            if (!contenuValide.contenu || typeof contenuValide.contenu !== 'object') {
+              contenuValide.contenu = { sections: [] }
+            }
+          } catch (parseError) {
+            console.error(`Invalid JSON string in contenu for page ${page}:`, parseError)
+            contenuValide.contenu = { sections: [] }
+          }
+        } else {
+          // Type inattendu, utiliser un contenu vide
+          console.warn(`Unexpected contenu type for page ${page}:`, typeof contenu.contenu)
+          contenuValide.contenu = { sections: [] }
+        }
+      } catch (jsonError) {
+        console.error(`Error processing JSON in contenu for page ${page}:`, jsonError)
+        // En cas d'erreur, retourner un contenu vide
+        contenuValide = {
+          ...contenu,
+          contenu: { sections: [] },
+        }
+      }
+
+      // S'assurer que la réponse peut être sérialisée
+      try {
+        JSON.stringify(contenuValide)
+        return successResponse(contenuValide, 'Contenu récupéré avec succès', 200)
+      } catch (serializeError) {
+        console.error(`Error serializing response for page ${page}:`, serializeError)
+        // Retourner un contenu minimal et valide
+        return successResponse(
+          {
+            id: contenu.id,
+            page: contenu.page,
+            titre: contenu.titre || null,
+            contenu: { sections: [] },
+            meta: null,
+            version: contenu.version,
+            auteurId: contenu.auteurId,
+            createdAt: contenu.createdAt,
+            updatedAt: contenu.updatedAt,
+          },
+          'Contenu récupéré avec succès (corrigé)',
+          200
+        )
+      }
     }
 
     // Récupérer tous les contenus
-    const contenus = await prisma.contenuEditable.findMany({
-      orderBy: { page: 'asc' },
+    let contenus
+    try {
+      contenus = await prisma.contenuEditable.findMany({
+        orderBy: { page: 'asc' },
+      })
+    } catch (dbError) {
+      console.error('Error fetching contenus from database:', dbError)
+      return errorResponse('Erreur lors de la récupération des contenus', 500)
+    }
+
+    // Valider tous les contenus
+    const contenusValides = contenus.map(contenu => {
+      try {
+        if (typeof contenu.contenu === 'object' && contenu.contenu !== null) {
+          JSON.stringify(contenu.contenu)
+        } else if (typeof contenu.contenu === 'string') {
+          try {
+            contenu.contenu = JSON.parse(contenu.contenu)
+          } catch (parseError) {
+            console.error(`Invalid JSON string in contenu for page ${contenu.page}:`, parseError)
+            return {
+              ...contenu,
+              contenu: { sections: [] },
+            }
+          }
+        }
+        return contenu
+      } catch (jsonError) {
+        console.error(`Invalid JSON in contenu for page ${contenu.page}:`, jsonError)
+        return {
+          ...contenu,
+          contenu: { sections: [] },
+        }
+      }
     })
 
-    return successResponse(contenus, 'Contenus récupérés avec succès', 200)
+    return successResponse(contenusValides, 'Contenus récupérés avec succès', 200)
   } catch (error: unknown) {
     if (error instanceof Error) {
       if (error.message === 'Unauthorized' || error.message === 'Forbidden') {
